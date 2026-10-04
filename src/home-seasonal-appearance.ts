@@ -315,9 +315,11 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     if (!scenery || !backgroundLoaded || disposed || suspended) return;
     const range = cards.scrollWidth - cards.clientWidth;
     const progress = range > 0 ? Math.max(0, Math.min(1, cards.scrollLeft / range)) : .5;
-    // A single clipped scenery layer moves instead of repainting a masked
-    // background on every scroll tick. No layer is allocated per item.
-    const offset = reduced() ? 0 : Math.round((.5 - progress) * 3.91304 * 1000) / 1000;
+    // Use 13.5% of the row width for the full sweep, three times the old range.
+    // translateX percentages refer to the existing 115%-wide scenery layer,
+    // leaving 0.75% of the row as overlap at either edge. No larger texture or
+    // per-item layer is needed, and the background stays clipped throughout.
+    const offset = reduced() ? 0 : Math.round((.5 - progress) * (13.5 / 1.15) * 1000) / 1000;
     const transform = `translateX(${offset}%)`;
     if (scenery.style.transform !== transform) scenery.style.transform = transform;
   };

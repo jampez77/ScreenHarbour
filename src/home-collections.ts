@@ -6,7 +6,7 @@ import { emptyHomeCollections, orderHomeItems, homeCollectionTabs, homeTabLabel,
 import { createHomeCollectionStore, type HomeCollectionStore } from './home-collection-store';
 import { nativeHomeRows, rememberHomeRows } from './home-row-placement';
 import { decorateSeasonalRow, refreshSeasonalBackdrop, refreshSeasonalDate, suspendSeasonalRow, resumeSeasonalRow } from './home-seasonal-appearance';
-import { scrollSeasonalSelectionIntoView, seasonalNavigationTop } from './home-seasonal-motion';
+import { scrollSeasonalSelectionIntoView, seasonalNavigationTop, settleSeasonalSelection } from './home-seasonal-motion';
 import { dailyAdvent } from './home-advent';
 import { homeRowCard } from './home-row-card';
 import { homeRowTabs } from './home-row-tabs';
@@ -115,6 +115,7 @@ export class HomeCollections {
   private loadingStore: LoadingScreenStore;
   private loadingTimer?: number;
   private restoreFrame?: number;
+  private restoreTimer?: number;
   private captureFrame?: number;
   private positionToRestore?: HomePosition;
   private nativePositionToRestore?: HomePosition;
@@ -232,6 +233,7 @@ export class HomeCollections {
     this.suspended = true; this.observer.disconnect(); this.channelArtwork.suspend();
     this.sections.forEach(section => suspendSeasonalRow(section.element));
     window.clearInterval(this.syncTimer); window.clearTimeout(this.seasonalTimer); window.clearTimeout(this.refreshTimer);
+    window.clearTimeout(this.restoreTimer); this.restoreTimer = undefined;
     for (const frame of [this.attachFrame, this.restoreFrame, this.captureFrame, this.refreshFrame]) if (frame !== undefined) cancelAnimationFrame(frame);
     this.attachFrame = this.restoreFrame = this.captureFrame = this.refreshFrame = this.refreshTimer = undefined;
     this.releaseInitialHome();
@@ -407,41 +409,84 @@ export class HomeCollections {
     if (!saved || this.displayedRevision !== this.revision || !showingHome(host)) return;
     const active = document.activeElement;
     if (this.inputRevision || active !== document.body && !host.contains(active)) { this.positionToRestore = undefined; return; }
-    this.positionToRestore = undefined;
-    const target = saved.focusId ? Array.from(host.querySelectorAll<HTMLElement>('[data-focus-id]')).find(node => node.dataset.focusId === saved.focusId)
+    let target = saved.focusId ? Array.from(host.querySelectorAll<HTMLElement>('[data-focus-id]')).find(node => node.dataset.focusId === saved.focusId)
       : saved.nativeFocus?.isConnected && host.contains(saved.nativeFocus) ? saved.nativeFocus : undefined;
-    if (target && !target.closest('.hide,[hidden]') && target.getClientRects().length
-      && getComputedStyle(target).visibility !== 'hidden' && !target.matches(':disabled')) target.focus({ preventScroll: true });
+    // Native viewshow can arrive before the shared row-readiness mask lifts.
+    // Keep the exact origin pending until its card can actually receive focus.
+    if (target && (target.closest('.hide,[hidden]') || !target.getClientRects().length
+      || getComputedStyle(target).visibility === 'hidden')) return;
+    this.positionToRestore = undefined;
+    if (target && !target.matches(':disabled')) target.focus({ preventScroll: true });
     const apply = () => {
-      for (const { key, elements } of this.positionRows(host)) elements.forEach((element, index) => {
-        const position = saved.rows.get(key)?.[index]; if (!position) return;
-        if (position.position !== undefined && element.scrollToPosition) element.scrollToPosition(position.position, true);
-        element.scrollLeft = position.left;
-      });
-      for (const { element, top, left } of saved.vertical) if (element.isConnected) {
-        // Defeat an optional native smooth-scroll rule for this one restoration.
-        const behavior = element.style.scrollBehavior; element.style.scrollBehavior = 'auto';
-        element.scrollTop = top; element.scrollLeft = left; element.style.scrollBehavior = behavior;
-      }
-      // A fresh visit or a changed collection can move a shuffled item. Keep
-      // its current horizontal position visible instead of relying on its slot.
-      const rowId = target?.closest<HTMLElement>('[data-home-row]')?.dataset.homeRow;
-      const cards = target?.closest<HTMLElement>('.tvl-home-row-cards');
-      if (target && cards && activeHomeRows(this.settings).some(row => row.id === rowId && row.shuffle)) {
-        const item = target.getBoundingClientRect(), strip = cards.getBoundingClientRect();
-        if (item.left < strip.left + 8) cards.scrollLeft += item.left - strip.left - 8;
-        else if (item.right > strip.right - 8) cards.scrollLeft += item.right - strip.right + 8;
+      const rows = this.positionRows(host);
+      const owners = new Set([...saved.vertical.map(entry => entry.element), ...rows.flatMap(row => row.elements), document.documentElement, document.body]);
+      const styles = Array.from(owners).map(node => ({ node, value: node.style.getPropertyValue('scroll-behavior'), priority: node.style.getPropertyPriority('scroll-behavior') }));
+      // Set every owner first: native/theme !important smooth-scroll rules can
+      // otherwise start a second animation while saved offsets are applied.
+      styles.forEach(({ node }) => node.style.setProperty('scroll-behavior', 'auto', 'important'));
+      try {
+        for (const { key, elements } of rows) elements.forEach((element, index) => {
+          const position = saved.rows.get(key)?.[index]; if (!position) return;
+          if (position.position !== undefined && element.scrollToPosition) element.scrollToPosition(position.position, true);
+          element.scrollLeft = position.left;
+        });
+        for (const { element, top, left } of saved.vertical) if (element.isConnected) {
+          element.scrollTop = top; element.scrollLeft = left;
+        }
+        // A fresh visit or a changed collection can move a shuffled item. Keep
+        // its current horizontal position visible instead of relying on its slot.
+        const rowId = target?.closest<HTMLElement>('[data-home-row]')?.dataset.homeRow;
+        const cards = target?.closest<HTMLElement>('.tvl-home-row-cards');
+        if (target && cards && activeHomeRows(this.settings).some(row => row.id === rowId && row.shuffle)) {
+          const item = target.getBoundingClientRect(), strip = cards.getBoundingClientRect();
+          if (item.left < strip.left + 8) cards.scrollLeft += item.left - strip.left - 8;
+          else if (item.right > strip.right - 8) cards.scrollLeft += item.right - strip.right + 8;
+        }
+      } finally {
+        styles.forEach(({ node, value, priority }) => {
+          if (value) node.style.setProperty('scroll-behavior', value, priority);
+          else node.style.removeProperty('scroll-behavior');
+        });
       }
     };
     apply();
-    // Native focus centering may finish in the next animation frame. Restore
-    // once more, then leave scrolling entirely to the user/native controllers.
+    // Repeat after the browser's immediate Back scroll restoration.
     const inputRevision = this.inputRevision;
+    if (this.restoreFrame !== undefined) cancelAnimationFrame(this.restoreFrame);
     this.restoreFrame = requestAnimationFrame(() => {
       this.restoreFrame = undefined;
-      if (!this.disposed && inputRevision === this.inputRevision && (document.activeElement === document.body || host.contains(document.activeElement))) apply();
+      if (!this.disposed && !this.suspended && inputRevision === this.inputRevision
+        && (document.activeElement === document.body || host.contains(document.activeElement))) apply();
     });
+    // Jellyfin queues a 270ms scroll for its temporary native focus. Returning
+    // focus to a custom scroller does not cancel that animation. Seasonal focus
+    // handlers are suspended during restoration, so their entry correction
+    // cannot help here. Settle once after native scrolling, without refocusing
+    // or undoing navigation, pointer input or wheel scrolling made meanwhile.
+    window.clearTimeout(this.restoreTimer);
+    this.restoreTimer = window.setTimeout(() => {
+      this.restoreTimer = undefined;
+      if (this.disposed || this.suspended || !showingHome(host)) return;
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement) || !host.contains(active)) return;
+      if (inputRevision !== this.inputRevision) {
+        // Left/Right during the return keeps the new card and horizontal offset.
+        // Only finish aligning that same scene; other input cancels this timer.
+        const cards = target?.closest('.tvl-home-row-cards');
+        if (!cards || active.closest('.tvl-home-row-cards') !== cards) return;
+      } else {
+        if (saved.focusId ? active.dataset.focusId !== saved.focusId : active !== target) return;
+        target = active; // Background metadata can replace the same logical card.
+        apply();
+      }
+      if (active.closest('.tvl-seasonal-row .tvl-home-row-card')) {
+        const settledInput = this.inputRevision;
+        settleSeasonalSelection(() => !this.disposed && !this.suspended && settledInput === this.inputRevision
+          && document.activeElement === active && showingHome(host));
+      }
+    }, 350);
   }
+  private cancelReturnScroll(): void { window.clearTimeout(this.restoreTimer); this.restoreTimer = undefined; }
   private queuePositionCapture = (): void => {
     if (this.suspended) return;
     if (this.captureFrame !== undefined) return;
@@ -458,7 +503,7 @@ export class HomeCollections {
     // Restore once after that native step; real input always takes priority.
     if (!this.inputRevision && showingHome(host)) { this.positionToRestore = saved; this.restorePosition(host); }
   };
-  private onWheel = (): void => { if (this.suspended) return; this.inputRevision++; this.positionToRestore = undefined; };
+  private onWheel = (): void => { if (this.suspended) return; this.cancelReturnScroll(); this.inputRevision++; this.positionToRestore = undefined; };
 
   private onVisible = (event?: Event): void => {
     // Returning to an open Home must not be skipped by the polling throttle.
@@ -861,6 +906,7 @@ export class HomeCollections {
     if (this.suspended) return;
     this.inputRevision++;
     const direction: Record<string, string> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey) this.cancelReturnScroll();
     // Arrow, focus and scroll events share one snapshot per frame. Activation,
     // Back and shortcuts still save synchronously before native routing runs.
     if (direction[event.key] && !event.altKey && !event.ctrlKey && !event.metaKey) this.queuePositionCapture();
@@ -872,13 +918,14 @@ export class HomeCollections {
     if (this.suspended) return;
     this.inputRevision++;
     const command = (event as CustomEvent).detail?.command?.toLowerCase();
+    if (!['left', 'right'].includes(command)) this.cancelReturnScroll();
     if (['left', 'right', 'up', 'down'].includes(command)) this.queuePositionCapture(); else this.rememberPosition();
     if (['left', 'right', 'up', 'down'].includes(command) && this.move(command)) { event.preventDefault(); event.stopImmediatePropagation(); }
     else if (this.owns(document.activeElement) && ['select', 'enter', 'ok'].includes(command)) {
       event.preventDefault(); event.stopImmediatePropagation(); (document.activeElement as HTMLElement).click();
     }
   };
-  private onPointer = (): void => { if (this.suspended) return; this.rememberPosition(); this.inputRevision++; };
+  private onPointer = (): void => { if (this.suspended) return; this.cancelReturnScroll(); this.rememberPosition(); this.inputRevision++; };
   private current(revision: number): boolean { return !this.disposed && (revision === this.revision || revision === this.displayedRevision); }
   private removeInactiveRows(rows: HomeCollectionRow[]): void {
     const ids = new Set(rows.map(row => row.id));
@@ -1107,6 +1154,7 @@ export class HomeCollections {
     if (this.attachFrame !== undefined) cancelAnimationFrame(this.attachFrame);
     if (this.refreshFrame !== undefined) cancelAnimationFrame(this.refreshFrame);
     window.clearTimeout(this.refreshTimer);
+    window.clearTimeout(this.restoreTimer);
     this.sections.forEach(section => { section.dispose?.(); section.element.remove(); }); this.sections = []; this.root.remove();
   }
 }

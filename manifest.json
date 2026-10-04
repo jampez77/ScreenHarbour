@@ -9,6 +9,30 @@
     "imageUrl": "https://raw.githubusercontent.com/jampez77/ScreenHarbour/main/assets/catalogue/screenharbour.png",
     "versions": [
       {
+        "version": "0.2.54.3",
+        "changelog": "Corrects Home position after Jellyfin\u2019s delayed native focus scrolling on Back, preserving the selected row, tab, shuffle and loaded artwork. New user input takes priority. Seasonal parallax has three times the movement range with the same background surface and no additional images or layers. Preserves all saved settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "12.0.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.54/TvItemLayout_0.2.54.3_jellyfin-12.0.0.zip",
+        "checksum": "f492a44e255cbd29367db7f5b5bec8ae",
+        "timestamp": "2026-10-04T12:35:13Z"
+      },
+      {
+        "version": "0.2.54.2",
+        "changelog": "Corrects Home position after Jellyfin\u2019s delayed native focus scrolling on Back, preserving the selected row, tab, shuffle and loaded artwork. New user input takes priority. Seasonal parallax has three times the movement range with the same background surface and no additional images or layers. Preserves all saved settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.11.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.54/TvItemLayout_0.2.54.2_jellyfin-10.11.0.zip",
+        "checksum": "1f62b563a2ea83c7205784f6b5ce8d7e",
+        "timestamp": "2026-10-04T12:35:13Z"
+      },
+      {
+        "version": "0.2.54.1",
+        "changelog": "Corrects Home position after Jellyfin\u2019s delayed native focus scrolling on Back, preserving the selected row, tab, shuffle and loaded artwork. New user input takes priority. Seasonal parallax has three times the movement range with the same background surface and no additional images or layers. Preserves all saved settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.10.7",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.54/TvItemLayout_0.2.54.1_jellyfin-10.10.7.zip",
+        "checksum": "62183d867940da5b89ed413b895ce64d",
+        "timestamp": "2026-10-04T12:35:13Z"
+      },
+      {
         "version": "0.2.53.3",
         "changelog": "Preserves the current Home shuffle when returning from a film opened in a Home row. Restores the selected card in its originating row, including films shown in multiple rows. Fresh Home visits still reshuffle. Preserves all saved rows and settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
         "targetAbi": "12.0.0",
