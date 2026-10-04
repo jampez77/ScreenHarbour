@@ -6,6 +6,9 @@
 .tvl-home-collection-row.tvl-seasonal-expanded {
   padding-top:var(--tvl-seasonal-space); padding-bottom:var(--tvl-seasonal-space);
 }
+.tvl-home-collection-row.tvl-seasonal-expanded[data-seasonal-expansion="fullscreen"] {
+  padding-top:var(--tvl-seasonal-space-top); padding-bottom:var(--tvl-seasonal-space-bottom);
+}
 .tvl-seasonal-row > :not(.tvl-seasonal-backdrop) { position:relative; z-index:1; }
 .tvl-seasonal-backdrop {
   position:absolute; z-index:0; pointer-events:none; top:-1rem; bottom:-1rem; left:0; right:0;
@@ -13,8 +16,31 @@
   -webkit-mask-image:linear-gradient(transparent,#000 20%,#000 80%,transparent);
   mask-image:linear-gradient(transparent,#000 20%,#000 80%,transparent);
 }
-.tvl-seasonal-row[data-seasonal-background="parallax"] > .tvl-seasonal-backdrop { background-size:115% var(--tvl-seasonal-art-height,100%); }
+.tvl-seasonal-row[data-seasonal-background="parallax"] > .tvl-seasonal-backdrop { overflow:hidden; }
+.tvl-seasonal-scene {
+  position:absolute;top:0;bottom:0;left:-7.5%;right:-7.5%;
+  background-size:100% var(--tvl-seasonal-art-height,100%);background-repeat:no-repeat;background-position:center;
+}
+.tvl-seasonal-focused .tvl-seasonal-scene { will-change:transform; }
 .tvl-seasonal-row .tvl-home-row-title { text-shadow:0 2px 12px #000,0 1px 3px #000; }
+.tvl-seasonal-row[data-seasonal-expansion="fullscreen"] .tvl-home-row-title { position:relative; }
+.tvl-seasonal-title-plain { transition:opacity .22s ease; }
+.tvl-seasonal-title-themed {
+  position:absolute;bottom:0;left:0;max-width:100%;pointer-events:none;
+  font-family:var(--tvl-seasonal-title-font,Georgia,serif);font-weight:var(--tvl-seasonal-title-weight,400);
+  font-size:2.35em;line-height:1.2;letter-spacing:.015em;overflow-wrap:break-word;
+  opacity:0;transform:translateY(.2em) scale(.8);transform-origin:left bottom;
+  transition:opacity .25s ease,transform .3s ease;
+}
+.tvl-seasonal-expanded .tvl-seasonal-title-plain { opacity:0; }
+.tvl-seasonal-expanded .tvl-seasonal-title-themed { opacity:1;transform:translateY(0) scale(1); }
+.tvl-seasonal-row[data-seasonal-theme="halloween"][data-seasonal-style="classic"] .tvl-seasonal-title-themed { color:#ffc273; }
+.tvl-seasonal-row[data-seasonal-theme="halloween"][data-seasonal-style="storybook"] .tvl-seasonal-title-themed { color:#eed0ff; }
+.tvl-seasonal-row[data-seasonal-theme="halloween"][data-seasonal-style="photoreal"] .tvl-seasonal-title-themed { color:#e6ddbe;letter-spacing:.07em; }
+.tvl-seasonal-row[data-seasonal-theme="halloween"][data-seasonal-style="nightmare"] .tvl-seasonal-title-themed { color:#ddaba3;text-shadow:0 3px 0 #5c1719,0 3px 14px #000; }
+.tvl-seasonal-row[data-seasonal-theme="christmas"][data-seasonal-style="classic"] .tvl-seasonal-title-themed { color:#ffe4a8; }
+.tvl-seasonal-row[data-seasonal-theme="christmas"][data-seasonal-style="storybook"] .tvl-seasonal-title-themed { color:#e0f9ff; }
+.tvl-seasonal-row[data-seasonal-theme="christmas"][data-seasonal-style="photoreal"] .tvl-seasonal-title-themed { color:#f4e6c3;letter-spacing:.055em; }
 .tvl-seasonal-row .tvl-home-row-caption { text-shadow:0 1px 5px #000; }
 .tvl-home-row-art .tvl-seasonal-frame {
   position:absolute; z-index:4; top:0; left:0; width:100%; height:100%; pointer-events:none;
@@ -102,8 +128,10 @@
 /* Preview uses the same decoration with its existing smaller cards. */
 .tvl-home-preview .tvl-seasonal-backdrop { left:-1rem; right:-1rem; }
 .tvl-home-preview .tvl-seasonal-door-number { font-size:1.6rem; }
+.tvl-home-preview .tvl-seasonal-title-themed { font-size:1.8em; }
 @media (prefers-reduced-motion:reduce) {
-  .tvl-home-collection-row.tvl-seasonal-row,.tvl-seasonal-panel,.tvl-seasonal-advent-flap,.tvl-seasonal-door-number,.tvl-seasonal-row .tvl-home-row-caption { transition:none; }
+  .tvl-home-collection-row.tvl-seasonal-row,.tvl-seasonal-panel,.tvl-seasonal-advent-flap,.tvl-seasonal-door-number,.tvl-seasonal-row .tvl-home-row-caption,.tvl-seasonal-title-plain,.tvl-seasonal-title-themed { transition:none; }
+  .tvl-seasonal-scene { will-change:auto; }
 }
 
 

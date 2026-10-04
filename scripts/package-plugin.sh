@@ -4,7 +4,7 @@ set -euo pipefail
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 project="$repo_dir/server/Jellyfin.Plugin.TvItemLayout.csproj"
 target="${1:-10.11.0}"
-release_version="0.2.47"
+release_version="0.2.48"
 
 case "$target" in
     all) targets=(10.10.7 10.11.0 12.0.0) ;;
@@ -46,6 +46,9 @@ with ZipFile(output, 'w', ZIP_DEFLATED) as archive:
         archive.write(root / 'assets/loading' / name, 'assets/loading/' + name)
     for asset in sorted((root / 'assets/seasonal').glob('*.md')):
         archive.write(asset, 'assets/seasonal/' + asset.name)
+    for asset in sorted((root / 'assets/seasonal-fonts').iterdir()):
+        if asset.suffix in ('.md', '.txt', '.json'):
+            archive.write(asset, 'assets/seasonal-fonts/' + asset.name)
     archive.write(root / 'docs/server.md', 'INSTALL.md')
     archive.writestr('build-info.json', json.dumps({
         'name': 'ScreenHarbour',

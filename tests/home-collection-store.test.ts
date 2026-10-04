@@ -116,7 +116,7 @@ test('native transport uses current authentication with no caller-selected user 
   const transport = createHomeCollectionTransport({ getUrl: path => '/jellyfin/' + path, getJSON: async url => { calls.push(url); return { Revision: null, Settings: null }; }, ajax: async options => { calls.push(options); throw { status: 409 }; } }, () => current);
   await transport.load(); await assert.rejects(transport.save(rows('Draft'), null), error => error instanceof HomeCollectionSyncError && error.kind === 'conflict');
   assert.equal(calls[0], '/jellyfin/TvItemLayout/HomeCollections'); assert.equal(calls[1].type, 'PUT');
-  assert.equal(calls[1].headers['X-ScreenHarbour-Home-Rows'], '5');
+  assert.equal(calls[1].headers['X-ScreenHarbour-Home-Rows'], '6');
   assert.deepEqual(Object.keys(JSON.parse(calls[1].data)).sort(), ['Revision', 'Settings']); assert.equal(calls[1].url.includes('user'), false);
   current = false; await assert.rejects(transport.load(), /account changed/); assert.equal(calls.length, 2);
 });
@@ -133,7 +133,7 @@ test('appearance survives native transport and cached reload, then can be explic
   ] }] });
   let saved = { Revision: 'first', Settings: settings };
   const transport = createHomeCollectionTransport({ getUrl: path => path, getJSON: async () => saved, ajax: async options => {
-    assert.equal(options.headers['X-ScreenHarbour-Home-Rows'], '5');
+    assert.equal(options.headers['X-ScreenHarbour-Home-Rows'], '6');
     const request = JSON.parse(options.data); assert.equal(request.Revision, saved.Revision);
     saved = { Revision: saved.Revision + '-next', Settings: request.Settings }; return saved;
   } }, () => true);

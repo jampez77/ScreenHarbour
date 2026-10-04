@@ -8,6 +8,7 @@ on:
       - 'src/**'
       - 'demo/**'
       - 'assets/providers/**'
+      - 'assets/seasonal-fonts/**'
       - 'scripts/build*.mjs'
       - 'package.json'
       - 'package-lock.json'

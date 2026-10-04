@@ -9,6 +9,30 @@
     "imageUrl": "https://raw.githubusercontent.com/jampez77/ScreenHarbour/main/assets/catalogue/screenharbour.png",
     "versions": [
       {
+        "version": "0.2.48.3",
+        "changelog": "Reduces repeated Home scans and door updates during TV navigation. Adds optional Full screen seasonal rows that expand below the header and transform their title with a distinct local font for each artwork style. Preserves all settings, doors, parallax, smaller TV images and lazy background loading. Older clients cannot erase saved full-screen appearance choices. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "12.0.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.48/TvItemLayout_0.2.48.3_jellyfin-12.0.0.zip",
+        "checksum": "fab930d72aa7919f6dd3da72602b836d",
+        "timestamp": "2026-10-04T08:14:07Z"
+      },
+      {
+        "version": "0.2.48.2",
+        "changelog": "Reduces repeated Home scans and door updates during TV navigation. Adds optional Full screen seasonal rows that expand below the header and transform their title with a distinct local font for each artwork style. Preserves all settings, doors, parallax, smaller TV images and lazy background loading. Older clients cannot erase saved full-screen appearance choices. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.11.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.48/TvItemLayout_0.2.48.2_jellyfin-10.11.0.zip",
+        "checksum": "f002be218077eb578717824ac374c556",
+        "timestamp": "2026-10-04T08:14:07Z"
+      },
+      {
+        "version": "0.2.48.1",
+        "changelog": "Reduces repeated Home scans and door updates during TV navigation. Adds optional Full screen seasonal rows that expand below the header and transform their title with a distinct local font for each artwork style. Preserves all settings, doors, parallax, smaller TV images and lazy background loading. Older clients cannot erase saved full-screen appearance choices. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.10.7",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.48/TvItemLayout_0.2.48.1_jellyfin-10.10.7.zip",
+        "checksum": "2ddba04e301702407d980c892f368499",
+        "timestamp": "2026-10-04T08:14:07Z"
+      },
+      {
         "version": "0.2.47.3",
         "changelog": "Reduces seasonal artwork download and decoded-pixel costs on TV with smaller photographic backgrounds, doors and frames. Seasonal backgrounds now load as rows approach the viewport, or immediately on focus, while row layout and items remain available. Desktop retains original artwork. Preserves all settings, seasonal effects and the Chromium 79 sizing-loop fix. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
         "targetAbi": "12.0.0",

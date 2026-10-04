@@ -73,6 +73,26 @@ test('background, focus expansion, frame and reveal can all be independently dis
   expect(await saved(page)).toEqual(before);
 });
 
+test('full-screen focus height previews and survives save and reload without changing collection content', async ({ page }) => {
+  await page.goto('/?featured=0&layout=desktop#/home'); await openEditor(page); await addSeason(page);
+  await editor(page).getByRole('button', { name: 'Halloween', exact: true }).click();
+  await editor(page).getByRole('combobox', { name: 'Scenery style', exact: true }).selectOption('nightmare');
+  await editor(page).getByRole('combobox', { name: 'Height when focused', exact: true }).selectOption('fullscreen');
+  await expect(preview(page).locator('.tvl-home-collection-row')).toHaveAttribute('data-seasonal-expansion', 'fullscreen');
+  await expect(editor(page).getByText(/Full screen fills the available screen space and enlarges the title/)).toBeVisible();
+  await editor(page).getByRole('button', { name: 'Save rows', exact: true }).click();
+  const original = (await saved(page)).rows[0].children[0];
+  expect(original.appearance).toMatchObject({ theme: 'halloween', expansion: 'fullscreen', backgroundStyle: 'nightmare' });
+  expect(original.collectionIds).toEqual(['collection-coast']);
+  await page.reload(); await openEditor(page);
+  await editor(page).getByRole('button', { name: 'Edit A seasonal cinema', exact: true }).click();
+  await editor(page).getByRole('button', { name: 'Appearance', exact: true }).click();
+  await expect(editor(page).getByRole('combobox', { name: 'Height when focused', exact: true })).toHaveValue('fullscreen');
+  await expect(preview(page).locator('.tvl-home-collection-row')).toHaveAttribute('data-seasonal-expansion', 'fullscreen');
+  await editor(page).getByRole('button', { name: 'Save rows', exact: true }).click();
+  expect((await saved(page)).rows[0].children[0]).toEqual(original);
+});
+
 test('appearance editor keeps regular rows unchanged and its controls usable at narrow widths', async ({ page }) => {
   await page.goto('/?featured=0&layout=desktop#/home'); await openEditor(page);
   await editor(page).getByRole('button', { name: 'Add collection items row', exact: true }).click();

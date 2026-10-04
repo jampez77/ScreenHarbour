@@ -32,7 +32,7 @@ public static class HomeCollectionsAdventChecks
             "Capability 5 persists advent mode alongside existing seasonal, rank, source and placement settings across controller instances");
         var original = HomeCollectionsRankChecks.Settings();
         var empty = JsonSerializer.SerializeToElement(new { version = 1, rows = Array.Empty<object>() });
-        foreach (var capability in new[] { "", "2", "3", "4", "4,5", "6" })
+        foreach (var capability in new[] { "", "2", "3", "4", "4,5", "7" })
         {
             controller.Request.Headers["X-ScreenHarbour-Home-Rows"] = capability;
             assert(Value(await controller.GetHomeCollections()).Settings!.Value.GetRawText() == settings.GetRawText(),
@@ -87,6 +87,7 @@ public static class HomeCollectionsAdventChecks
         var cleared = Value(await controller.PutHomeCollections(new(restored.Revision, empty)));
         assert(cleared.Settings!.Value.GetProperty("rows").GetArrayLength() == 0,
             "Capability 5 may intentionally remove all advent rows");
+        await HomeCollectionsFullscreenChecks.Run(assert, controller, second, cleared.Revision!);
     }
 
     public static async Task RunHttp(Action<bool, string> assert, HttpClient client, string revision)
@@ -128,5 +129,6 @@ public static class HomeCollectionsAdventChecks
         Capability("4");
         using var compatible = await Put(removedSaved.GetProperty("Revision").GetString(), HomeCollectionsRankChecks.Settings());
         assert(compatible.StatusCode == HttpStatusCode.OK, "Actual HTTP capability 4 resumes editing after advent is removed");
+        await HomeCollectionsFullscreenChecks.RunHttp(assert, client, (await Json(compatible)).GetProperty("Revision").GetString()!);
     }
 }

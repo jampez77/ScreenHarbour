@@ -80,10 +80,11 @@ for(const background of ['static','parallax'] as const) test(`${background} back
   const section=row(page,'Halloween'),backdrop=section.locator('.tvl-seasonal-backdrop');
   await expect(section).toHaveAttribute('data-seasonal-background',background);
   await section.locator('.tvl-home-row-card').first().focus();
-  const initial=await backdrop.evaluate(node=>getComputedStyle(node).backgroundPosition);
+  const scenery=background==='parallax'?section.locator('.tvl-seasonal-scene'):backdrop;
+  const initial=await scenery.evaluate(node=>getComputedStyle(node).transform);
   for(let i=0;i<11;i++)await page.keyboard.press('ArrowRight');
-  if(background==='parallax') await expect.poll(()=>backdrop.evaluate(node=>getComputedStyle(node).backgroundPosition)).not.toBe(initial);
-  else expect(await backdrop.evaluate(node=>getComputedStyle(node).backgroundPosition)).toBe(initial);
+  if(background==='parallax') await expect.poll(()=>scenery.evaluate(node=>getComputedStyle(node).transform)).not.toBe(initial);
+  else expect(await scenery.evaluate(node=>getComputedStyle(node).transform)).toBe(initial);
 });
 
 test('normal rows have no decorations, disabled effects stay off and reduced motion opens immediately',async({page})=>{
@@ -126,7 +127,7 @@ for(const theme of ['halloween','christmas'] as const) test(`${theme} photoreal 
   page.on('response',response=>{if(response.url().includes('/assets/seasonal/')) {expect(response.status()).toBe(200);assets.push(response.url());}});
   await fixture(page,{theme,backgroundStyle:theme==='halloween'?'nightmare':'photoreal',frameStyle:'photoreal',coverStyle:'photoreal',reveal:'shutters'});
   const section=row(page,'Halloween'),cards=section.locator('.tvl-home-row-card');
-  await expect.poll(()=>assets.filter(url=>/-tv\.webp\?v=0\.2\.47$/.test(url)).length).toBeGreaterThanOrEqual(3);
+  await expect.poll(()=>assets.filter(url=>/-tv\.webp\?v=0\.2\.48$/.test(url)).length).toBeGreaterThanOrEqual(3);
   expect(assets.every(url=>new URL(url).origin===new URL(page.url()).origin)).toBe(true);
   await expect(cards.first().locator('.tvl-seasonal-full-door')).toHaveCount(2);
   await expect(cards.first().locator('.tvl-seasonal-window')).toHaveCount(1);
@@ -144,8 +145,8 @@ test('storybook remains self-contained and reduced-motion parallax stays still',
   await fixture(page,{background:'parallax',backgroundStyle:'storybook',frameStyle:'storybook',coverStyle:'storybook',reveal:'doors'});
   const section=row(page,'Halloween'),backdrop=section.locator('.tvl-seasonal-backdrop');
   await section.locator('.tvl-home-row-card').first().focus();
-  const before=await backdrop.evaluate(node=>getComputedStyle(node).backgroundPosition);
+  const before=await section.locator('.tvl-seasonal-scene').evaluate(node=>getComputedStyle(node).transform);
   for(let i=0;i<11;i++)await page.keyboard.press('ArrowRight');
-  expect(await backdrop.evaluate(node=>getComputedStyle(node).backgroundPosition)).toBe(before);
+  expect(await section.locator('.tvl-seasonal-scene').evaluate(node=>getComputedStyle(node).transform)).toBe(before);
   expect(assets).toEqual([]);
 });

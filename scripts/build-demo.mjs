@@ -15,6 +15,7 @@ for (const path of ['dist/demo.js', 'dist/jellyfin-tv-layout.js', 'dist/jellyfin
 }
 await cp(new URL('demo/assets/', root), new URL('demo/assets/', output), { recursive: true });
 await cp(new URL('assets/loading/', root), new URL('assets/loading/', output), { recursive: true });
+await cp(new URL('assets/seasonal-fonts/', root), new URL('assets/seasonal-fonts/', output), { recursive: true });
 await mkdir(new URL('assets/seasonal/', output), { recursive: true });
 for (const name of await readdir(new URL('assets/seasonal/', root))) {
   if (/\.(webp|md)$/.test(name)) await cp(new URL(`assets/seasonal/${name}`, root), new URL(`assets/seasonal/${name}`, output));

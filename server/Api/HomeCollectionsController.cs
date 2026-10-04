@@ -98,13 +98,15 @@ public sealed class HomeCollectionsController(
             if (current.Settings is JsonElement currentSettings)
             {
                 var capability = Request.Headers["X-ScreenHarbour-Home-Rows"].ToString();
-                if (UsesSeasonalAdvent(currentSettings) && capability != "5")
+                if (UsesSeasonalFullscreen(currentSettings) && capability != "6")
+                    return Conflict("These Home rows use full-screen seasonal artwork. Reload ScreenHarbour on this device before saving.");
+                if (UsesSeasonalAdvent(currentSettings) && capability is not ("5" or "6"))
                     return Conflict("These Home rows use advent calendar doors. Reload ScreenHarbour on this device before saving.");
-                if (UsesSeasonalRankStyle(currentSettings) && capability is not ("4" or "5"))
+                if (UsesSeasonalRankStyle(currentSettings) && capability is not ("4" or "5" or "6"))
                     return Conflict("These Home rows use seasonal ranking artwork. Reload ScreenHarbour on this device before saving.");
-                if (UsesSeasonalAppearance(currentSettings) && capability is not ("3" or "4" or "5"))
+                if (UsesSeasonalAppearance(currentSettings) && capability is not ("3" or "4" or "5" or "6"))
                     return Conflict("These Home rows use seasonal appearance settings. Reload ScreenHarbour on this device before saving.");
-                if (UsesSeasonalOrShuffle(currentSettings) && capability is not ("2" or "3" or "4" or "5"))
+                if (UsesSeasonalOrShuffle(currentSettings) && capability is not ("2" or "3" or "4" or "5" or "6"))
                     return Conflict("These Home rows use seasonal or shuffle settings. Reload ScreenHarbour on this device before saving.");
             }
             var saved = new HomeCollectionsResponse(Guid.NewGuid().ToString("N"), request.Settings.Clone());
@@ -146,11 +148,14 @@ public sealed class HomeCollectionsController(
         row.GetProperty("kind").GetString() == "seasonal" && row.GetProperty("children").EnumerateArray().Any(child =>
             child.TryGetProperty("appearance", out var appearance)
                 && (appearance.GetProperty("reveal").GetString() == "advent" || appearance.TryGetProperty("adventUnlock", out _))));
+    private static bool UsesSeasonalFullscreen(JsonElement settings) => settings.GetProperty("rows").EnumerateArray().Any(row =>
+        row.GetProperty("kind").GetString() == "seasonal" && row.GetProperty("children").EnumerateArray().Any(child =>
+            child.TryGetProperty("appearance", out var appearance) && appearance.GetProperty("expansion").GetString() == "fullscreen"));
     private static bool Choice(JsonElement value, string key, params string[] choices) => value.TryGetProperty(key, out var choice)
         && choice.ValueKind == JsonValueKind.String && choices.Contains(choice.GetString(), StringComparer.Ordinal);
     private static bool ValidAppearance(JsonElement appearance) => Properties(appearance, "theme", "background", "expansion", "frame", "reveal", "backgroundStyle", "frameStyle", "coverStyle", "rankStyle", "adventUnlock")
         && Choice(appearance, "theme", "halloween", "christmas") && Choice(appearance, "background", "none", "static", "parallax")
-        && Choice(appearance, "expansion", "none", "medium", "large") && Choice(appearance, "reveal", "none", "doors", "curtains", "shutters", "advent")
+        && Choice(appearance, "expansion", "none", "medium", "large", "fullscreen") && Choice(appearance, "reveal", "none", "doors", "curtains", "shutters", "advent")
         && (appearance.GetProperty("reveal").GetString() != "advent" || appearance.GetProperty("theme").GetString() == "christmas")
         && (!appearance.TryGetProperty("adventUnlock", out _) || appearance.GetProperty("reveal").GetString() == "advent"
             && Choice(appearance, "adventUnlock", "focus", "daily"))

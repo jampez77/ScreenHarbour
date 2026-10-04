@@ -278,7 +278,7 @@ export class HomeCollectionEditor {
     };
     option('background', 'Background', [['none', 'None'], ['static', 'Static scenery'], ['parallax', 'Parallax scenery']], 'Static scenery stays still. Parallax scenery moves gently behind the items as the row scrolls.');
     if (appearance.background !== 'none') artStyle('backgroundStyle', 'Scenery style');
-    option('expansion', 'Height when focused', [['none', 'Standard height'], ['medium', 'Roomier · up to 1.5×'], ['large', 'Immersive · up to 2×']], 'Grows to fit the available screen space, then returns to normal when focus leaves. Posters keep their size.');
+    option('expansion', 'Height when focused', [['none', 'Standard height'], ['medium', 'Roomier · up to 1.5×'], ['large', 'Immersive · up to 2×'], ['fullscreen', 'Full screen']], 'Returns to normal when focus leaves. Full screen fills the available screen space and enlarges the title in a font matching the scenery style. Posters keep their size.');
     const frameLabel = el('label', 'tvl-home-seasonal-frame-toggle');
     const frame = el('input'); frame.type = 'checkbox'; frame.checked = appearance.frame; frame.dataset.editorFocus = 'appearance:frame';
     frame.addEventListener('change', () => { appearance.frame = frame.checked; this.redraw('appearance:frame'); });

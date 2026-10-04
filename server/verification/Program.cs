@@ -60,6 +60,7 @@ using var cached = await client.SendAsync(conditional);
 Assert(cached.StatusCode == HttpStatusCode.NotModified, "Conditional request returns 304");
 Assert((await cached.Content.ReadAsByteArrayAsync()).Length == 0, "304 response has no body");
 await SeasonalAssetChecks.Run(Assert, client);
+await SeasonalFontChecks.Run(Assert, client);
 await new StartupService(app.Services.GetRequiredService<ILogger<StartupService>>())
     .ExecuteAsync(new Progress<double>(), CancellationToken.None);
 Assert(true, "Missing FileTransformation is handled without failing startup");

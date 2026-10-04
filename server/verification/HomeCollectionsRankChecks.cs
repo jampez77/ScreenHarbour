@@ -27,7 +27,7 @@ public static class HomeCollectionsRankChecks
             "Capability 4 persists independent themed and standard seasonal rank artwork across controller instances");
         var original = HomeCollectionsAppearanceChecks.Settings();
         var empty = JsonSerializer.SerializeToElement(new { version = 1, rows = Array.Empty<object>() });
-        foreach (var capability in new[] { "", "2", "3", "3,4", "6" })
+        foreach (var capability in new[] { "", "2", "3", "3,4", "7" })
         {
             controller.Request.Headers["X-ScreenHarbour-Home-Rows"] = capability;
             assert(Value(await controller.GetHomeCollections()).Settings!.Value.GetRawText() == settings.GetRawText(),

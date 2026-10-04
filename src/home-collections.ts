@@ -32,6 +32,7 @@ export function clearHomeSession(): void { lastHome = undefined; lastHomeExclusi
 // the initial row batch is masked, so remember its last native target by account.
 const nativeReturnFocus = new WeakMap<HTMLElement, { key: string; element: HTMLElement }>();
 type NativeScroller = HTMLElement & { getScrollPosition?(): number; scrollToPosition?(position: number, immediate: boolean): void };
+type PositionRow = { key: string; elements: NativeScroller[] };
 type HomePosition = {
   vertical: { element: HTMLElement; top: number; left: number }[];
   rows: Map<string, { left: number; position?: number }[]>;
@@ -107,6 +108,7 @@ export class HomeCollections {
   private positionToRestore?: HomePosition;
   private nativePositionToRestore?: HomePosition;
   private lastPosition?: HomePosition;
+  private positionRowCache?: { host: HTMLElement; rows: PositionRow[] };
   private accountIdentity: string;
   private providerSyncing = false;
   private providerLastSync = 0;
@@ -167,10 +169,22 @@ export class HomeCollections {
     this.observer = new MutationObserver(records => {
       // Native row order can change without replacing a node. Ignore scroller
       // transform updates so animated TV focus does not keep reattaching rows.
-      if (records.some(record => record.attributeName !== 'style'
-        || (record.target as Element).matches('.verticalSection, .ec-root, .homeSectionsContainer, #homeTab'))) this.attach();
+      if (records.some(record => {
+        const target = record.target as Element;
+        if (record.attributeName === 'style') return target.matches('.verticalSection, .ec-root, .homeSectionsContainer, #homeTab');
+        if (record.attributeName === 'class' && target.closest('.tvl-home-collection-row')) {
+          // Opening a door or expanding a focused seasonal row changes its
+          // appearance, not its insertion point or saved scroller identity.
+          // Keep observing every other class change, including visibility.
+          const structural = (value: string) => value.split(/\s+/).filter(name => name
+            && !/^tvl-seasonal-(?:focused|expanded|item-open|reveal-active)$/.test(name)).sort().join(' ');
+          return structural(record.oldValue || '') !== structural(target.getAttribute('class') || '');
+        }
+        return true;
+      })) this.attach();
     });
-    this.observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'style', 'aria-busy'] });
+    this.observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeOldValue: true,
+      attributeFilter: ['class', 'hidden', 'style', 'aria-busy'] });
     this.attach(); void this.render(); void this.refreshLibraryExclusions(true);
     if (this.store.synced || this.providerStore.synced || this.api.getWatchlist || this.api.getHomeLibraryExclusions) {
       this.syncTimer = window.setInterval(this.onVisible, 60_000);
@@ -254,11 +268,13 @@ export class HomeCollections {
     this.rememberPosition();
   };
 
-  private positionRows(host: HTMLElement): { key: string; elements: NativeScroller[] }[] {
-    return [...nativeHomeRows(host).map(row => ({ key: row.key,
+  private positionRows(host: HTMLElement, anchors?: ReturnType<typeof nativeHomeRows>): PositionRow[] {
+    if (!anchors && this.positionRowCache?.host === host) return this.positionRowCache.rows;
+    const rows = [...(anchors || nativeHomeRows(host)).map(row => ({ key: row.key,
       elements: Array.from(row.element.querySelectorAll<NativeScroller>('.emby-scroller, .itemsContainer')) })),
     ...this.sections.map(section => ({ key: `owned:${section.row.id}`,
       elements: Array.from(section.element.querySelectorAll<NativeScroller>('.tvl-home-row-cards')) }))];
+    this.positionRowCache = { host, rows }; return rows;
   }
   private rememberPosition = (): void => {
     const host = this.root.parentElement;
@@ -543,6 +559,9 @@ export class HomeCollections {
 
   private attach(): void {
     if (this.disposed) return;
+    // Membership/visibility/native order may have changed. Between attachments
+    // key, focus and scroll events only need the existing scroller references.
+    this.positionRowCache = undefined;
     const host = document.querySelector<HTMLElement>('#indexPage #homeTab, #homeTab');
     if (!host) return;
     this.libraryVisibility.sync(host);
@@ -617,6 +636,7 @@ export class HomeCollections {
       const cards = element.querySelector<HTMLElement>('.tvl-home-row-cards');
       if (cards?.dataset.restoreScroll !== undefined) { cards.scrollLeft = Number(cards.dataset.restoreScroll); delete cards.dataset.restoreScroll; }
     }
+    this.positionRows(host, anchors);
     // Commit and position every owned row before revealing either row family.
     // Readiness has a bounded fallback, so an unavailable source cannot trap Home.
     const firstPaint = !this.initialPaint;
@@ -671,6 +691,16 @@ export class HomeCollections {
     if (!host?.contains(active) || active.matches('input,textarea,select') || active.closest('.ec-root')) return false;
     const controls = (group: HTMLElement) => Array.from(group.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],[tabindex="0"]'))
       .filter(node => !node.closest('.hide,[hidden]') && node.getClientRects().length > 0);
+    if (direction === 'left' || direction === 'right') {
+      if (!this.owns(active)) return false;
+      // Horizontal movement cannot cross rows. Avoid measuring every native
+      // and collection row for each remote repeat while sliding one strip.
+      const group = active.closest<HTMLElement>('.focuscontainer-x');
+      if (!group || group.querySelector('.focuscontainer-x')) return false;
+      const current = controls(group), index = current.indexOf(active);
+      if (index < 0) return false;
+      this.focus(current[index + (direction === 'right' ? 1 : -1)]); return true;
+    }
     const groups = Array.from(host.querySelectorAll<HTMLElement>('.focuscontainer-x, .ec-root'))
       .filter(group => !group.querySelector('.focuscontainer-x') && controls(group).length > 0)
       // Native navigation uses screen geometry. Follow that same row order at
@@ -680,10 +710,6 @@ export class HomeCollections {
     const groupIndex = groups.findIndex(group => controls(group).includes(active));
     if (groupIndex < 0) return false;
     const current = controls(groups[groupIndex]), index = current.indexOf(active);
-    if (direction === 'left' || direction === 'right') {
-      if (!this.owns(active)) return false;
-      this.focus(current[index + (direction === 'right' ? 1 : -1)]); return true;
-    }
     const next = groups[groupIndex + (direction === 'down' ? 1 : -1)];
     if (!this.owns(active) && !this.owns(next)) return false;
     if (next) {
@@ -723,6 +749,7 @@ export class HomeCollections {
     // Do not leave yesterday's rows visible while tomorrow's source loads.
     expired.forEach(section => { section.dispose?.(); section.element.remove(); this.selectedSources.delete(section.row.id); });
     this.sections = this.sections.filter(section => !expired.includes(section));
+    this.positionRowCache = undefined;
     if (next) this.focus(next);
   }
   private async render(refreshList = false): Promise<void> {
@@ -884,6 +911,7 @@ export class HomeCollections {
     }
     this.rememberNativeFocus();
     this.disposed = true; this.revision++; this.observer.disconnect();
+    this.positionRowCache = undefined;
     this.channelArtwork.destroy(); this.libraryVisibility.destroy(); this.loadingStore.destroy(); this.removeWatchlist();
     this.staged = undefined; this.readiness.destroy(); this.releaseInitialHome();
     this.store.destroy(); this.providerStore.destroy(); window.clearInterval(this.syncTimer); window.clearTimeout(this.seasonalTimer); window.removeEventListener('focus', this.onVisible);

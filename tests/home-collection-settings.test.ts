@@ -193,7 +193,7 @@ test('seasonal appearance is optional, bounded and rejects incomplete or unknown
     const defaults = defaultSeasonalAppearance(theme);
     assert.deepEqual(defaults, { theme, background: 'static', expansion: 'medium', frame: true, reveal: 'none' });
     assert.notEqual(defaults, defaultSeasonalAppearance(theme));
-    for (const background of ['none', 'static', 'parallax']) for (const expansion of ['none', 'medium', 'large'])
+    for (const background of ['none', 'static', 'parallax']) for (const expansion of ['none', 'medium', 'large', 'fullscreen'])
       for (const frame of [true, false]) for (const reveal of ['none', 'doors', 'curtains']) {
         const appearance = { theme, background, expansion, frame, reveal };
         assert.deepEqual(parseSeasonalAppearance(appearance), appearance);
@@ -202,7 +202,7 @@ test('seasonal appearance is optional, bounded and rejects incomplete or unknown
   }
   const valid = defaultSeasonalAppearance('halloween');
   for (const value of [undefined, null, false, [], 'halloween', {}, { ...valid, extra: true }, { ...valid, theme: 'custom' },
-    { ...valid, background: 'url(https://example.test)' }, { ...valid, expansion: 2 }, { ...valid, reveal: 'always' }, { ...valid, frame: 'true' }])
+    { ...valid, background: 'url(https://example.test)' }, { ...valid, expansion: 2 }, { ...valid, expansion: 'full-screen' }, { ...valid, reveal: 'always' }, { ...valid, frame: 'true' }])
     assert.equal(parseSeasonalAppearance(value), undefined);
   for (const key of Object.keys(valid)) {
     const missing = { ...valid } as Record<string, unknown>; delete missing[key];
@@ -234,6 +234,23 @@ test('only seasonal children retain appearance, and bad appearance never removes
   assert.equal(active[2].ranked, true); assert.equal(active[2].shuffle, true);
   assert.deepEqual(activeHomeRows(settings, new Date(2026, 5, 1)).map(row => row.id), ['ordinary']);
   assert.deepEqual(parseHomeCollections(settings), settings);
+});
+
+test('full-screen seasonal rows preserve their content, dates and independent artwork choices through storage', () => {
+  const appearance = { ...defaultSeasonalAppearance('halloween'), expansion: 'fullscreen', backgroundStyle: 'nightmare', frameStyle: 'photoreal', coverStyle: 'storybook', reveal: 'doors' };
+  const settings = parseHomeCollections({ version: 1, rows: [{ id: 'seasonal', kind: 'seasonal', placement: 'native:continue watching:1', children: [
+    { id: 'halloween', kind: 'items', title: 'Spooky season', collectionIds: ['horror-films'], season: { start: '10-01', end: '11-01' },
+      ranked: true, shuffle: true, itemSort: 'custom', itemOrder: ['film-2', 'film-1'], appearance },
+  ] }] });
+  assert.deepEqual(settings.rows[0].children![0].appearance, appearance);
+  const restored = parseHomeCollections(JSON.parse(JSON.stringify(settings)));
+  assert.deepEqual(restored, settings);
+  const active = activeHomeRows(restored, new Date(2026, 9, 4));
+  assert.equal(active[0].appearance!.expansion, 'fullscreen');
+  assert.equal(active[0].placement, 'native:continue watching:1');
+  assert.deepEqual(active[0].collectionIds, ['horror-films']);
+  assert.deepEqual(active[0].itemOrder, ['film-2', 'film-1']);
+  assert.deepEqual(activeHomeRows(restored, new Date(2026, 5, 1)), []);
 });
 
 test('rank artwork choices persist without materializing an override for existing seasonal rows', () => {

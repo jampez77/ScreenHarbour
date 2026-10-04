@@ -1,0 +1,69 @@
+{
+  "acquired": "2026-10-04",
+  "googleFontsCommit": "9710da1eacb3be272583c3224dcb70f9da6eadbb",
+  "fonts": [
+    {
+      "family": "Creepster",
+      "filename": "halloween-classic.woff2",
+      "weight": 400,
+      "bytes": 28132,
+      "sha256": "6afd8405a83ad5351f23dd72e18491353acde2caf91b5aac0023942deb6cbe3a",
+      "source": "https://fonts.gstatic.com/s/creepster/v13/AlZy_zVUqJz4yMrniH4Rcn35fh4Dog.woff2",
+      "license": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/creepster/OFL.txt"
+    },
+    {
+      "family": "Henny Penny",
+      "filename": "halloween-storybook.woff2",
+      "weight": 400,
+      "bytes": 38232,
+      "sha256": "0ad48c76a30b193944b816d653013e047636306bc583820a2dfe21c9072b8765",
+      "source": "https://fonts.gstatic.com/s/hennypenny/v18/wXKvE3UZookzsxz_kjGSfPQtvXIZt9DS.woff2",
+      "license": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/hennypenny/OFL.txt"
+    },
+    {
+      "family": "IM Fell English SC",
+      "filename": "halloween-photoreal.woff2",
+      "weight": 400,
+      "bytes": 56956,
+      "sha256": "f0f85c4edd2c3dc659db649e9fd0258951445d2fa0735eb43b44a1052ed3d2f5",
+      "source": "https://fonts.gstatic.com/s/imfellenglishsc/v16/a8IENpD3CDX-4zrWfr1VY879qFF05pZ7PIIPoUgxzQ.woff2",
+      "license": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/imfellenglishsc/OFL.txt"
+    },
+    {
+      "family": "Nosifer",
+      "filename": "halloween-nightmare.woff2",
+      "weight": 400,
+      "bytes": 15048,
+      "sha256": "3a5eeb1292433f73290bacda757ac5072b544e085116a989378c1f7fe398bace",
+      "source": "https://fonts.gstatic.com/s/nosifer/v23/ZGjXol5JTp0g5bxZWCpbVRFeCDo.woff2",
+      "license": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/nosifer/OFL.txt"
+    },
+    {
+      "family": "Berkshire Swash",
+      "filename": "christmas-classic.woff2",
+      "weight": 400,
+      "bytes": 17080,
+      "sha256": "170e276d539187bfdb2cd9828b93fc84f0244b6d51f1857b82a9241b2aacc60a",
+      "source": "https://fonts.gstatic.com/s/berkshireswash/v22/ptRRTi-cavZOGqCvnNJDl5m5XmN_qs4zT305QQ.woff2",
+      "license": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/berkshireswash/OFL.txt"
+    },
+    {
+      "family": "Snowburst One",
+      "filename": "christmas-storybook.woff2",
+      "weight": 400,
+      "bytes": 25016,
+      "sha256": "c768a8d1bd80336134775f923b8c5c4a4cfd41f49a1e9d89f7aa03efbdfce6f6",
+      "source": "https://fonts.gstatic.com/s/snowburstone/v21/MQpS-WezKdujBsXY3B7I-UT7SZiePgSfLbs.woff2",
+      "license": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/snowburstone/OFL.txt"
+    },
+    {
+      "family": "Cinzel Decorative",
+      "filename": "christmas-photoreal.woff2",
+      "weight": 700,
+      "bytes": 15428,
+      "sha256": "9f36288a4e7497c602cce217167ec011ee4fc50156f0362abf4576e24ad33763",
+      "source": "https://fonts.gstatic.com/s/cinzeldecorative/v19/daaHSScvJGqLYhG8nNt8KPPswUAPniZoadlESTGplhXF.woff2",
+      "license": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/cinzeldecorative/OFL.txt"
+    }
+  ]
+}

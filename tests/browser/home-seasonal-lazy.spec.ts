@@ -17,10 +17,19 @@ async function fixture(page: Page, mode: ObserverMode = 'real', layout = 'tv', h
     localStorage.setItem(`jellyfin-cinema.home-collections.v1:${encodeURIComponent(location.origin)}:demo`, JSON.stringify(settings));
     if (holdNative) {
       (window as any).__preparedSeasonalRows = [];
+      (window as any).__preparedSeasonalResizeListeners = [];
+      let preparing: Element | undefined;
+      const add = window.addEventListener;
+      window.addEventListener = function (type, listener, options) {
+        if (type === 'resize' && preparing && !preparing.isConnected) (window as any).__preparedSeasonalResizeListeners.push(listener);
+        return add.call(this, type, listener, options);
+      } as typeof window.addEventListener;
       const prepend = Element.prototype.prepend;
       Element.prototype.prepend = function (...nodes) {
         if (nodes.some(node => node instanceof Element && node.classList.contains('tvl-seasonal-backdrop'))) {
           (window as any).__preparedSeasonalRows.push(this);
+          preparing = this;
+          queueMicrotask(() => { preparing = undefined; });
         }
         prepend.apply(this, nodes);
       };
@@ -111,7 +120,7 @@ test('leaving Home disconnects pending scenery and ignores a queued callback', a
   expect(state.errors).toEqual([]);
 });
 
-test('leaving Home before native rows are ready never starts observers for abandoned prepared rows', async ({ page }) => {
+test('leaving Home before native rows are ready never registers global listeners or observers for abandoned prepared rows', async ({ page }) => {
   const state = await fixture(page, 'held', 'tv', true);
   await expect(seasonalRow(page)).toHaveCount(0);
   const prepared = await page.evaluate(() => (window as any).__preparedSeasonalRows.map((row: HTMLElement) => ({
@@ -120,9 +129,11 @@ test('leaving Home before native rows are ready never starts observers for aband
   })));
   expect(prepared.every((row: any) => !row.connected && row.cards === 2 && !row.image)).toBe(true);
   expect(await page.evaluate(() => (window as any).__sceneryObservers.length)).toBe(0);
+  expect(await page.evaluate(() => (window as any).__preparedSeasonalResizeListeners.length)).toBe(0);
   await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
   await expect(page.getByRole('dialog', { name: 'Collections', exact: true })).toBeVisible();
   expect(await page.evaluate(() => (window as any).__sceneryObservers.length)).toBe(0);
+  expect(await page.evaluate(() => (window as any).__preparedSeasonalResizeListeners.length)).toBe(0);
   expect(state.requests).toEqual([]);
   expect(state.errors).toEqual([]);
 });
