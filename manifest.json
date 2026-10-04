@@ -9,6 +9,30 @@
     "imageUrl": "https://raw.githubusercontent.com/jampez77/ScreenHarbour/main/assets/catalogue/screenharbour.png",
     "versions": [
       {
+        "version": "0.2.49.3",
+        "changelog": "Fixes full-screen seasonal rows stopping short on initial focus when native smooth scrolling competes with expansion. Sets the final layout once and animates visual layers to reduce repainting. Speeds remote navigation by checking only needed controls and combining saved-position work. Preserves all settings, themed titles, doors, parallax and lazy-loaded TV artwork. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "12.0.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.49/TvItemLayout_0.2.49.3_jellyfin-12.0.0.zip",
+        "checksum": "c1b65cfa7c26c5087b61ff116e3d541d",
+        "timestamp": "2026-10-04T09:08:36Z"
+      },
+      {
+        "version": "0.2.49.2",
+        "changelog": "Fixes full-screen seasonal rows stopping short on initial focus when native smooth scrolling competes with expansion. Sets the final layout once and animates visual layers to reduce repainting. Speeds remote navigation by checking only needed controls and combining saved-position work. Preserves all settings, themed titles, doors, parallax and lazy-loaded TV artwork. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.11.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.49/TvItemLayout_0.2.49.2_jellyfin-10.11.0.zip",
+        "checksum": "b2826529ce41db25d89d2d878c27e3d3",
+        "timestamp": "2026-10-04T09:08:36Z"
+      },
+      {
+        "version": "0.2.49.1",
+        "changelog": "Fixes full-screen seasonal rows stopping short on initial focus when native smooth scrolling competes with expansion. Sets the final layout once and animates visual layers to reduce repainting. Speeds remote navigation by checking only needed controls and combining saved-position work. Preserves all settings, themed titles, doors, parallax and lazy-loaded TV artwork. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.10.7",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.49/TvItemLayout_0.2.49.1_jellyfin-10.10.7.zip",
+        "checksum": "51ead8fd6e4181f992377055afb5c70c",
+        "timestamp": "2026-10-04T09:08:36Z"
+      },
+      {
         "version": "0.2.48.3",
         "changelog": "Reduces repeated Home scans and door updates during TV navigation. Adds optional Full screen seasonal rows that expand below the header and transform their title with a distinct local font for each artwork style. Preserves all settings, doors, parallax, smaller TV images and lazy background loading. Older clients cannot erase saved full-screen appearance choices. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
         "targetAbi": "12.0.0",

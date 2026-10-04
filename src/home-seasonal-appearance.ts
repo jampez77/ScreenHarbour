@@ -6,6 +6,7 @@ import { adventDoorArt } from './home-advent-art';
 import { adventDoorState } from './home-advent';
 import { seasonalRankImage } from './home-seasonal-rank';
 import { applySeasonalTitleFont } from './home-seasonal-font';
+import { cancelSeasonalMotion, changeSeasonalExpansion, seasonalHeaderClearance, settleSeasonalSelection } from './home-seasonal-motion';
 
 type AdventCard = { row: HomeCollectionRow; index: number; caption: HTMLElement | null; title: string; label: string; opensAt?: number; opensLabel?: string };
 const adventCards = new WeakMap<HTMLElement, AdventCard>();
@@ -129,11 +130,6 @@ function seasonalPixels(section: HTMLElement, property: string, value: number): 
   if (!Number.isFinite(current) || Math.abs(current - next) > tolerance) section.style.setProperty(property, `${next}px`);
 }
 
-function headerClearance(): number {
-  const header = document.querySelector('.skinHeader:not(.osdHeader)')?.getBoundingClientRect();
-  return Math.max(80, header && header.bottom < window.innerHeight / 2 ? header.bottom + 12 : 0);
-}
-
 /** Measure once mounted so expansion reveals a fixed scene instead of stretching it. */
 export function refreshSeasonalBackdrop(section: HTMLElement): void {
   if (!section.classList.contains('tvl-seasonal-row') || !section.isConnected) return;
@@ -145,7 +141,7 @@ export function refreshSeasonalBackdrop(section: HTMLElement): void {
   const fullscreen = section.dataset.seasonalExpansion === 'fullscreen';
   const preview = !!section.closest('.tvl-home-preview');
   const factor = section.dataset.seasonalExpansion === 'large' ? 1 : section.dataset.seasonalExpansion === 'medium' ? .5 : 0;
-  const available = preview ? Math.min(520, window.innerHeight * .6) : window.innerHeight - headerClearance() - 16;
+  const available = preview ? Math.min(520, window.innerHeight * .6) : window.innerHeight - seasonalHeaderClearance() - 16;
   const extra = fullscreen ? Math.max(0, available - base) : Math.max(0, Math.min(base * factor, window.innerHeight * .78 - base));
   const themed = section.querySelector<HTMLElement>('.tvl-seasonal-title-themed');
   const title = section.querySelector<HTMLElement>('.tvl-home-row-title');
@@ -186,9 +182,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   }
   if (appearance.background !== 'none') {
     backdrop = el('div', 'tvl-seasonal-backdrop'); backdrop.setAttribute('aria-hidden', 'true');
-    if (appearance.background === 'parallax') {
-      scenery = el('div', 'tvl-seasonal-scene'); backdrop.append(scenery);
-    } else scenery = backdrop;
+    scenery = el('div', 'tvl-seasonal-scene'); backdrop.append(scenery);
     section.prepend(backdrop);
   }
   const loadBackground = () => {
@@ -199,13 +193,15 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     // only request/decode its scenery as navigation approaches the row.
     if (scenery) scenery.style.backgroundImage = `url("${seasonalBackground(appearance.theme, appearance.backgroundStyle)}")`;
     if (themedTitle) void applySeasonalTitleFont(themedTitle, appearance.theme, appearance.backgroundStyle).then(() => {
-      if (!disposed && section.isConnected) refreshSeasonalBackdrop(section);
+      if (!disposed && section.isConnected) {
+        refreshSeasonalBackdrop(section);
+        if (expanded && !preview()) settleSeasonalSelection();
+      }
     });
     if (appearance.background === 'parallax') onScroll();
   };
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let scrollFrame = 0, settleFrame = 0, focusFrame = 0;
-  let until = 0;
+  let scrollFrame = 0, focusFrame = 0;
   const threeDimensional = appearance.reveal === 'doors' || appearance.reveal === 'shutters' || appearance.reveal === 'advent';
   const closing = new Map<HTMLElement, number>();
   const finishClosing = (card: HTMLElement) => {
@@ -232,51 +228,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     const card = target instanceof Element ? target.closest<HTMLElement>('.tvl-home-row-card') : null;
     return card && cards.contains(card) ? card : null;
   };
-  let clearance = 80;
-  // Padding transitions can move the next focused row as the old one closes.
-  // Keep the *current* selection visible, never refocus an earlier card.
-  const keepSelectionVisible = () => {
-    if (disposed || !section.isConnected || preview()) return;
-    const active = document.activeElement;
-    if (!(active instanceof HTMLElement) || !active.closest('#homeTab') || active.closest('#homeTab') !== section.closest('#homeTab')) return;
-    // Full-screen is still an ordinary row in the page, so Up/Down and Back
-    // retain their usual meaning. Align its scene below the native header.
-    if (appearance.expansion === 'fullscreen' && section.contains(active)) {
-      let remaining = section.getBoundingClientRect().top - clearance;
-      for (let parent = section.parentElement; parent && Math.abs(remaining) > 1; parent = parent.parentElement) {
-        if (parent.scrollHeight <= parent.clientHeight || !/(auto|scroll|overlay)/.test(getComputedStyle(parent).overflowY)) continue;
-        const before = parent.scrollTop; parent.scrollTop += remaining;
-        remaining -= parent.scrollTop - before;
-      }
-      if (Math.abs(remaining) > 1) window.scrollBy(0, remaining);
-    }
-    let rect = active.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight - 16) {
-      active.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});
-      rect = active.getBoundingClientRect();
-    }
-    if (rect.top >= clearance) return;
-    for (let parent = active.parentElement; parent && rect.top < clearance; parent = parent.parentElement) {
-      if (parent.scrollHeight <= parent.clientHeight || !/(auto|scroll|overlay)/.test(getComputedStyle(parent).overflowY)) continue;
-      parent.scrollTop += Math.floor(rect.top - clearance) - 1;
-      rect = active.getBoundingClientRect();
-    }
-    if (rect.top < clearance) window.scrollBy(0, Math.floor(rect.top - clearance) - 1);
-  };
-  const settle = () => {
-    cancelAnimationFrame(settleFrame);
-    if (preview()) return;
-    clearance = headerClearance();
-    until = performance.now() + (reduced() ? 40 : 400);
-    const follow = () => {
-      if (disposed || !section.isConnected) return;
-      keepSelectionVisible();
-      if (performance.now() < until) settleFrame = requestAnimationFrame(follow);
-    };
-    settleFrame = requestAnimationFrame(follow);
-  };
   const onTransition = (event: TransitionEvent) => {
-    if (event.target === section && event.propertyName.startsWith('padding')) keepSelectionVisible();
     if (event.propertyName === 'transform' && event.target instanceof Element
       && event.target.matches('.tvl-seasonal-panel,.tvl-seasonal-advent-flap')) {
       const card = item(event.target);
@@ -309,8 +261,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     if (appearance.expansion === 'none' || active === expanded) return;
     if (active) refreshSeasonalBackdrop(section);
     expanded = active;
-    section.classList.toggle('tvl-seasonal-expanded', active);
-    if (focused || !active) settle();
+    changeSeasonalExpansion(section, active, () => refreshSeasonalBackdrop(section));
   };
   const onFocus = () => { hovered = null; cancelAnimationFrame(focusFrame); sync(); };
   const onBlur = () => { hovered = null; cancelAnimationFrame(focusFrame); focusFrame = requestAnimationFrame(() => sync()); };
@@ -340,7 +291,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   cards.addEventListener('pointerover', onPointer);
   cards.addEventListener('pointerleave', onLeave);
   if (appearance.background === 'parallax') { cards.addEventListener('scroll', onScroll, { passive: true }); onScroll(); }
-  const onResize = () => { refreshSeasonalBackdrop(section); if (expanded) settle(); };
+  const onResize = () => { cancelSeasonalMotion(); refreshSeasonalBackdrop(section); if (expanded && !preview()) settleSeasonalSelection(); };
   // Home may abandon a prepared row before mounting it. Keep all external
   // subscriptions weak until it is actually mounted, including resize.
   pendingMounts.set(section, () => {
@@ -363,7 +314,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   refreshSeasonalBackdrop(section);
   sync();
   return () => {
-    disposed = true; cancelAnimationFrame(scrollFrame); cancelAnimationFrame(settleFrame); cancelAnimationFrame(focusFrame);
+    disposed = true; cancelAnimationFrame(scrollFrame); cancelAnimationFrame(focusFrame); cancelSeasonalMotion();
     pendingMounts.delete(section);
     backdropObserver?.disconnect(); backdropObserver = undefined;
     for (const timer of closing.values()) window.clearTimeout(timer);
