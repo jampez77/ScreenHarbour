@@ -91,10 +91,11 @@ export function scrollSeasonalSelectionIntoView(node: HTMLElement, vertical = tr
   alignSelection(node, false, vertical && (!row || !motions.has(row))); return true;
 }
 
-function followSelection(): void {
+function followSelection(isCurrent?: () => boolean): void {
   cancelAnimationFrame(followFrame);
   followFrame = requestAnimationFrame(() => {
     followFrame = 0;
+    if (isCurrent && !isCurrent()) return;
     const active = document.activeElement;
     if (!(active instanceof HTMLElement)) return;
     const row = active.closest<HTMLElement>('.tvl-seasonal-row');
@@ -195,7 +196,8 @@ export function changeSeasonalExpansion(section: HTMLElement, expanded: boolean,
 }
 
 /** Late title fonts or resize change geometry once, then settle without a loop. */
-export function settleSeasonalSelection(): void {
+export function settleSeasonalSelection(isCurrent?: () => boolean): void {
+  if (isCurrent && !isCurrent()) return;
   if (document.activeElement instanceof HTMLElement) alignSelection(document.activeElement, true);
-  followSelection();
+  followSelection(isCurrent);
 }

@@ -32,7 +32,7 @@ for suffix, target in [('3', '12.0.0'), ('2', '10.11.0'), ('1', '10.10.7')]:
     assert archive.with_suffix('.zip.sha256').read_text().split()[0] == hashlib.sha256(data).hexdigest()
     versions.append({
         'version': version,
-        'changelog': 'Preserves the current Home shuffle when returning from a film opened in a Home row. Restores the selected card in its originating row, including films shown in multiple rows. Fresh Home visits still reshuffle. Preserves all saved rows and settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
+        'changelog': 'Corrects Home position after Jellyfin’s delayed native focus scrolling on Back, preserving the selected row, tab, shuffle and loaded artwork. New user input takes priority. Seasonal parallax has three times the movement range with the same background surface and no additional images or layers. Preserves all saved settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
         'targetAbi': target,
         'sourceUrl': f'{release_url_prefix}v{release}/{archive.name}',
         # Jellyfin's catalogue protocol requires MD5; SHA-256 files are also published.
