@@ -81,14 +81,14 @@ function alignSelection(active: HTMLElement, finish = false, vertical = true): v
 }
 
 /** Used after preventScroll focus so native card centering cannot undo the scene. */
-export function scrollSeasonalSelectionIntoView(node: HTMLElement): boolean {
+export function scrollSeasonalSelectionIntoView(node: HTMLElement, vertical = true): boolean {
   if (!node.closest('.tvl-seasonal-row .tvl-home-row-card') || node.closest('.tvl-home-preview')) return false;
   const row = node.closest<HTMLElement>('.tvl-seasonal-row');
   // A neighbour may still be translating after another row closes. Its
   // intermediate rectangle is not a new scroll target; completion aligns it.
   // Its horizontal coordinates are stable, so Right/Left still reveal the
   // selected poster immediately while vertical motion finishes.
-  alignSelection(node, false, !row || !motions.has(row)); return true;
+  alignSelection(node, false, vertical && (!row || !motions.has(row))); return true;
 }
 
 function followSelection(): void {

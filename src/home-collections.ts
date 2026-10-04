@@ -700,9 +700,9 @@ export class HomeCollections {
     } finally { if (this.preparing === staged) this.preparing = undefined; }
   }
 
-  private focus(node?: HTMLElement): void {
+  private focus(node?: HTMLElement, horizontal = false): void {
     node?.focus({ preventScroll: true });
-    if (node && !scrollSeasonalSelectionIntoView(node)) node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (node && !scrollSeasonalSelectionIntoView(node, !horizontal)) node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   private owns(node: Element | null): boolean { return !!node && this.sections.some(section => section.element.contains(node)); }
   private move(direction: string): boolean {
@@ -725,7 +725,7 @@ export class HomeCollections {
       // pay for offscreen items, even when moving just one place.
       const step = direction === 'right' ? 1 : -1;
       for (let next = index + step; next >= 0 && next < current.length; next += step) {
-        if (usable(current[next])) { this.focus(current[next]); break; }
+        if (usable(current[next])) { this.focus(current[next], true); break; }
       }
       return true;
     }
@@ -829,6 +829,12 @@ export class HomeCollections {
     const section = el('section', 'verticalSection tvl-home-collection-row');section.dataset.homeRow = row.id;
     section.setAttribute('aria-label', title);section.append(el('h2', 'tvl-home-row-title', title));
     const cards = el('div', 'tvl-home-row-cards focuscontainer-x');cards.setAttribute('role', 'list');
+    if (row.appearance) {
+      // Jellyfin queues its own TV focus animation after focusin. Seasonal
+      // cards already position both axes, so opt out through its scroller
+      // contract instead of letting native card centering move the scene.
+      cards.dataset.scrollModeX = 'custom'; cards.dataset.scrollModeY = 'custom';
+    }
     const tabs = homeCollectionTabs(row);
     const tabbed = row.kind === 'items' && !!row.tabs?.length;
     const prefix = `tvl-home-${encodeURIComponent(row.id)}`;
