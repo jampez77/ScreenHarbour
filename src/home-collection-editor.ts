@@ -560,14 +560,14 @@ export class HomeCollectionEditor {
       }
       footer.append(actions);
     }
-    this.preview.append(footer, el('p', 'tvl-home-preview-note', dailyAdvent(row) ? 'Films follow Item order. Preview doors always open; Home follows the season dates.' : row.shuffle ? 'Sample shuffled order. Home reshuffles on each load; your saved order stays unchanged.' : 'Updates as you edit. Save rows to apply to Home.'));
+    this.preview.append(footer, el('p', 'tvl-home-preview-note', dailyAdvent(row) ? 'Films follow Item order. Preview doors always open; Home follows the season dates.' : row.shuffle ? 'Sample shuffled order. A fresh Home visit reshuffles; Back from an item keeps the current order.' : 'Updates as you edit. Save rows to apply to Home.'));
   }
   private renderOrder(row: HomeCollectionRow, content: HTMLElement): void {
     const shuffle = this.control('Shuffle on load', 'shuffle', () => {
       row.shuffle = !row.shuffle; shuffle.setAttribute('aria-pressed', String(row.shuffle)); this.renderPreview(row);
     }); shuffle.setAttribute('aria-pressed', String(!!row.shuffle));
     shuffle.disabled = dailyAdvent(row);
-    content.append(shuffle, el('p', 'tvl-home-editor-help', dailyAdvent(row) ? 'Daily advent doors use the item order below. Shuffle on load is ignored so each film keeps its door number.' : 'Shuffle these items each time Home loads. This overrides the order below on Home, without changing your saved order.'));
+    content.append(shuffle, el('p', 'tvl-home-editor-help', dailyAdvent(row) ? 'Daily advent doors use the item order below. Shuffle on load is ignored so each film keeps its door number.' : 'Shuffle on a fresh Home visit. Back from an item keeps the current order. Your saved order below stays unchanged.'));
     content.append(el('p', 'tvl-home-editor-help', 'This changes the order in this Home row only. Other views keep their existing order.'));
     let items: Item[];
     if (row.kind === 'collections') items = row.collectionIds.map(id => this.collections.find(item => item.Id === id)).filter((item): item is Item => !!item);

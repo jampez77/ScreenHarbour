@@ -9,6 +9,30 @@
     "imageUrl": "https://raw.githubusercontent.com/jampez77/ScreenHarbour/main/assets/catalogue/screenharbour.png",
     "versions": [
       {
+        "version": "0.2.53.3",
+        "changelog": "Preserves the current Home shuffle when returning from a film opened in a Home row. Restores the selected card in its originating row, including films shown in multiple rows. Fresh Home visits still reshuffle. Preserves all saved rows and settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "12.0.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.53/TvItemLayout_0.2.53.3_jellyfin-12.0.0.zip",
+        "checksum": "f92ea55d8797c6baf277c4066e50aa56",
+        "timestamp": "2026-10-04T11:03:50Z"
+      },
+      {
+        "version": "0.2.53.2",
+        "changelog": "Preserves the current Home shuffle when returning from a film opened in a Home row. Restores the selected card in its originating row, including films shown in multiple rows. Fresh Home visits still reshuffle. Preserves all saved rows and settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.11.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.53/TvItemLayout_0.2.53.2_jellyfin-10.11.0.zip",
+        "checksum": "1b419fc6b58c6ab22104d67c752f5269",
+        "timestamp": "2026-10-04T11:03:50Z"
+      },
+      {
+        "version": "0.2.53.1",
+        "changelog": "Preserves the current Home shuffle when returning from a film opened in a Home row. Restores the selected card in its originating row, including films shown in multiple rows. Fresh Home visits still reshuffle. Preserves all saved rows and settings. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.10.7",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.53/TvItemLayout_0.2.53.1_jellyfin-10.10.7.zip",
+        "checksum": "84df6344f94aeffc60d36980f5cbd061",
+        "timestamp": "2026-10-04T11:03:50Z"
+      },
+      {
         "version": "0.2.52.3",
         "changelog": "Moves Home collection-row editing into desktop Settings, under ScreenHarbour > Collection rows, alongside Streaming services and Loading screen. The Collections page retains its browsing controls. Preserves all saved rows and settings; editing remains desktop-only. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
         "targetAbi": "12.0.0",

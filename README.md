@@ -10,11 +10,11 @@
 
 Cinematic browsing for Jellyfin’s **TV and desktop layouts**, inspired by Netflix and built using the integration and remote-control patterns from [InPlayerEpisodePreview-TV](https://github.com/jampez77/InPlayerEpisodePreview-TV). ScreenHarbour is an independent project, not affiliated with or endorsed by Jellyfin. The name follows [Jellyfin’s third-party branding guidance](https://jellyfin.org/docs/general/contributing/branding/). Formerly **Jellyfin Cinema** and **TV Item Layout**, with the same plugin identity and upgrade path.
 
-[**Try the demo**](https://jampez77.github.io/ScreenHarbour/?layout=desktop&featured=0#/home) · [Screenshots](#screenshots) · [Install](#install) · [Release notes](docs/releases/v0.2.52.md)
+[**Try the demo**](https://jampez77.github.io/ScreenHarbour/?layout=desktop&featured=0#/home) · [Screenshots](#screenshots) · [Install](#install) · [Release notes](docs/releases/v0.2.53.md)
 
 This plugin brings one cinematic style to Home, Movies, TV Shows, Music, Recordings, Collections and the main Live TV guide. It also includes provider Home pages, browsing during video playback and a pause screen. Media artwork, metadata, collections, recommendations, favourites and playback positions come from your signed-in Jellyfin library. Provider pages match that library to UK streaming availability from JustWatch through TMDB, with Disney studio titles also included on Disney+.
 
-**0.2.52 is available as a prerelease** ([release notes](docs/releases/v0.2.52.md)) for Jellyfin 10.10.7, 10.11.x and 12.x. Configure Home collection rows in desktop **Settings → ScreenHarbour → Collection rows**, alongside Streaming services and Loading screen. The Collections page keeps its browsing controls. All saved rows and settings are preserved, and editing remains desktop-only. Update the plugin, restart Jellyfin and fully reopen clients.
+**0.2.53 is available as a prerelease** ([release notes](docs/releases/v0.2.53.md)) for Jellyfin 10.10.7, 10.11.x and 12.x. Back from a film opened in a Home row keeps the current shuffle and restores its card in the originating row, even when the same film appears in several rows. Fresh Home visits still reshuffle. All saved rows and settings are preserved. Update the plugin, restart Jellyfin and fully reopen clients.
 
 ## Try the demo
 
@@ -110,7 +110,7 @@ A seasonal sub-row also has an **Appearance** tab. Choose **Normal**, **Hallowee
 
 The live preview uses the same scenery and focus behavior as Home. **Save rows** applies your choices to the account; **Cancel** discards the draft. Normal removes all optional decoration. Decorations do not change season dates, and out-of-season rows still take no space. Reduced-motion preferences disable animated transitions and parallax movement. Existing rows remain normal until you choose a theme; no settings migration is needed. Generated photorealistic artwork and the seven themed title fonts are bundled with the plugin and demo, with no external image or font service requests during use. Font attribution and SIL Open Font License notices are in [seasonal fonts](assets/seasonal-fonts/README.md).
 
-Under **Item order**, enable **Shuffle on load** for a normal row or a seasonal sub-row. Home shuffles its collection tiles or members on each visit. Background refreshes keep the current order stable and add new members without rearranging the existing ones. Saved manual ordering and Jellyfin collections are unchanged; turning shuffle off restores the chosen order. The editor shows a sample shuffle.
+Under **Item order**, enable **Shuffle on load** for a normal row or a seasonal sub-row. A fresh Home visit shuffles its collection tiles or members. Opening a film from a Home row and returning with Back keeps that visit’s shuffle and restores the selected card in the originating row, including when the same film appears in several rows. Background refreshes keep the current order stable and add new members without rearranging the existing ones. Saved manual ordering and Jellyfin collections are unchanged; turning shuffle off restores the chosen order. The editor shows a sample shuffle.
 
 The **Home preview** shows the selected row’s title, artwork and chosen item order, including ranked number images and the selected collection tab when enabled. It updates as you edit so you can review the result before saving. The position context shows where the row will appear among your Home sections. Missing-artwork placeholders stay inside their thumbnails, keeping the editor controls usable.
 
@@ -142,7 +142,7 @@ Open [the local preview](http://127.0.0.1:4173) or [desktop mode](http://127.0.0
 
 ## Install
 
-The [v0.2.52 prerelease](https://github.com/jampez77/ScreenHarbour/releases/tag/v0.2.52) supports Jellyfin 10.10.7, 10.11.x and 12.x and is intended for server testing. Physical Mac mini/TV deployment and remote testing have not been performed for this release. See the [0.2.52 release notes](docs/releases/v0.2.52.md) for changes and validation status.
+The [v0.2.53 prerelease](https://github.com/jampez77/ScreenHarbour/releases/tag/v0.2.53) supports Jellyfin 10.10.7, 10.11.x and 12.x and is intended for server testing. Physical Mac mini/TV deployment and remote testing have not been performed for this release. See the [0.2.53 release notes](docs/releases/v0.2.53.md) for changes and validation status.
 
 In **Dashboard → Plugins → Repositories**, add:
 
@@ -158,7 +158,7 @@ To build the packages locally:
 bash scripts/package-plugin.sh all
 ```
 
-The published builds are `0.2.52.1` for 10.10.7, `0.2.52.2` for 10.11.x and `0.2.52.3` for 12.x. Archives retain their `TvItemLayout_…` names. Release preparation is documented in [publishing](docs/publishing.md).
+The published builds are `0.2.53.1` for 10.10.7, `0.2.53.2` for 10.11.x and `0.2.53.3` for 12.x. Archives retain their `TvItemLayout_…` names. Release preparation is documented in [publishing](docs/publishing.md).
 
 ## Verify
 

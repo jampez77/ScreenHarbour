@@ -42,6 +42,8 @@ type HomePosition = {
 // Session-only, bounded and account-scoped. Native node references are checked
 // again on return; custom rows are resolved by their stable saved identifiers.
 const homePositions = new Map<string, HomePosition>();
+const homeItemVisitKey = 'jellyfinCinemaHomeItemVisit';
+let homeItemVisitSequence = 0;
 
 
 function showingHome(host = document.querySelector<HTMLElement>('#indexPage #homeTab, #homeTab')): boolean {
@@ -71,8 +73,9 @@ export class HomeCollections {
   private seasonalTimer?: number;
   private activeRowIds = '';
   // Per Home visit, not persisted: refreshing metadata must not reshuffle the
-  // row underneath the user. A new Home view gets a fresh random order.
+  // row underneath the user. Back from a row item continues the same visit.
   private shuffledOrders = new Map<string, string[]>();
+  private itemReturn?: { home: string; token: string; position?: HomePosition };
   private key: string;
   private store: HomeCollectionStore;
   private syncing = false;
@@ -236,10 +239,17 @@ export class HomeCollections {
 
   resume(): void {
     if (this.disposed || !this.suspended) return;
-    this.suspended = false; this.warmReturn = true; this.inputRevision = 0; this.visit++;
-    this.positionToRestore = this.nativePositionToRestore = this.lastPosition;
+    const origin = this.itemReturn;
+    this.itemReturn = undefined;
+    const continuing = !!origin && origin.home === location.hash && history.state?.[homeItemVisitKey] === origin.token;
+    if (continuing) {
+      const state = { ...history.state }; delete state[homeItemVisitKey];
+      history.replaceState(state, '', location.href);
+    } else { this.visit++; this.shuffledOrders.clear(); }
+    this.suspended = false; this.warmReturn = true; this.inputRevision = 0;
+    this.positionToRestore = this.nativePositionToRestore = continuing ? origin.position || this.lastPosition : this.lastPosition;
     this.initialRefreshPending = true; this.providerRefreshPending = true;
-    this.resumeAppearance = true; this.shuffledOrders.clear();
+    this.resumeAppearance = true;
     const host = document.querySelector<HTMLElement>('#indexPage #homeTab, #homeTab');
     const available = ({ element, populated }: { element: HTMLElement; populated: boolean }): boolean => {
       if (!host?.contains(element) || populated && !element.childElementCount) return false;
@@ -258,12 +268,27 @@ export class HomeCollections {
     }
     this.observe(); this.channelArtwork.resume();
     const rows = activeHomeRows(this.settings);
-    if (this.pendingRender || JSON.stringify(rows.map(row => row.id)) !== this.activeRowIds || rows.some(row => row.shuffle && !dailyAdvent(row))) void this.render();
+    if (this.pendingRender || JSON.stringify(rows.map(row => row.id)) !== this.activeRowIds
+      || !continuing && rows.some(row => row.shuffle && !dailyAdvent(row))) void this.render();
     else this.scheduleSeasonCheck();
     this.attach();
     if (this.store.synced || this.providerStore.synced || this.api.getWatchlist || this.api.getHomeLibraryExclusions) {
       this.syncTimer = window.setInterval(this.onVisible, 60_000);
     }
+  }
+
+  private openRowItem(itemId: string, card: HTMLElement): void {
+    if (this.disposed || this.suspended) return;
+    this.rememberPosition();
+    // Mark the actual Home history entry, not the film's detail URL. The same
+    // film can appear in several rows/tabs or be opened from another library.
+    // Explicit card identity also covers pointer activation without focus.
+    const token = `${Date.now()}:${++homeItemVisitSequence}`;
+    const state = history.state && typeof history.state === 'object' ? history.state : {};
+    history.replaceState({ ...state, [homeItemVisitKey]: token }, '', location.href);
+    this.itemReturn = { home: location.hash, token,
+      position: this.lastPosition && { ...this.lastPosition, focusId: card.dataset.focusId, nativeFocus: undefined } };
+    this.navigate(itemId);
   }
 
   private refreshAfterPaint(): void {
@@ -398,8 +423,8 @@ export class HomeCollections {
         const behavior = element.style.scrollBehavior; element.style.scrollBehavior = 'auto';
         element.scrollTop = top; element.scrollLeft = left; element.style.scrollBehavior = behavior;
       }
-      // A shuffled row has a fresh order on this visit. Restore the same item,
-      // then keep its new horizontal position visible instead of the old slot.
+      // A fresh visit or a changed collection can move a shuffled item. Keep
+      // its current horizontal position visible instead of relying on its slot.
       const rowId = target?.closest<HTMLElement>('[data-home-row]')?.dataset.homeRow;
       const cards = target?.closest<HTMLElement>('.tvl-home-row-cards');
       if (target && cards && activeHomeRows(this.settings).some(row => row.id === rowId && row.shuffle)) {
@@ -984,7 +1009,7 @@ export class HomeCollections {
           for (const [offset, item] of items.slice(shown, shown + limit).entries()) {
             const index = shown + offset;
             const entry = el('div', 'tvl-home-row-entry'); entry.setAttribute('role', 'listitem');
-            const card = homeRowCard(this.api, item, row.ranked ? index + 1 : undefined, () => { if (!this.disposed) this.navigate(item.Id); }, row, index);
+            const card = homeRowCard(this.api, item, row.ranked ? index + 1 : undefined, () => this.openRowItem(item.Id, card), row, index);
             card.dataset.focusId = tabbed ? `${focusPrefix(source.id)}${encodeURIComponent(item.Id)}` : `home:${row.id}:${item.Id}`;
             if (row.kind === 'watchlist') card.dataset.watchlistIndex = String(index);
             entry.append(card); cards.append(entry);
@@ -1050,6 +1075,7 @@ export class HomeCollections {
   }
 
   destroy(): void {
+    this.itemReturn = undefined;
     if (this.initialPaint && this.displayedRevision > 0 && JSON.stringify([this.api.serverId, this.api.userId]) === this.accountIdentity
       && (!this.api.homeCollections || this.api.homeCollections.isCurrent()) && (!this.api.providerHomes || this.api.providerHomes.isCurrent())) {
       const items: HomeSnapshot['items'] = new Map();

@@ -137,14 +137,15 @@ test('shuffle covers collection tiles and child items, refreshes only on a new H
   expect(await page.evaluate(() => localStorage.getItem(`jellyfin-cinema.home-collections.v1:${encodeURIComponent(location.origin)}:demo`))).toBe(original);
 });
 
-test('Back keeps a shuffled collection item focused and visible even when its new random position is outside the first 60', async ({ page }) => {
+test('Back keeps the shuffled preview and its last card unchanged, while a fresh visit can reshuffle beyond the first 60', async ({ page }) => {
   await fixture(page, [seasonal([base('Large seasonal collection', {
     season: { start: '10-01', end: '10-31' }, shuffle: true, ranked: true
   })])], '2026-10-15T12:00:00+01:00', 80);
   const cards = row(page, 'Large seasonal collection').locator('.tvl-home-row-card');
   const target = row(page, 'Large seasonal collection').locator('[data-item-id="season-film-60"]');
   await expect(cards).toHaveCount(60);
-  expect((await ids(page, 'Large seasonal collection')).indexOf('season-film-60')).toBe(59);
+  const initial = await ids(page, 'Large seasonal collection');
+  expect(initial.indexOf('season-film-60')).toBe(59);
   await target.focus(); await target.evaluate(node => node.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'Seasonal film 61 details', exact: true })).toBeVisible();
@@ -154,8 +155,7 @@ test('Back keeps a shuffled collection item focused and visible even when its ne
   await expect(cards).toHaveCount(60);
   await expect(target).toBeFocused();
   const returned = await ids(page, 'Large seasonal collection');
-  expect(returned.slice(0, 59)).toEqual(Array.from({ length: 59 }, (_, index) => `season-film-${index}`));
-  expect(returned[59]).toBe('season-film-60');
+  expect(returned).toEqual(initial);
   await expect(target).toHaveAttribute('aria-label', 'Rank 60: Seasonal film 61');
   await expect(row(page, 'Large seasonal collection').getByRole('button', { name: 'View full collection', exact: true })).toBeVisible();
   await expect.poll(() => target.evaluate(node => {
@@ -163,4 +163,12 @@ test('Back keeps a shuffled collection item focused and visible even when its ne
     return card.left >= strip.left && card.right <= strip.right;
   })).toBe(true);
   await page.keyboard.press('ArrowLeft'); await expect(cards.nth(58)).toBeFocused();
+  await target.focus();
+  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
+  await expect(page.getByRole('dialog', { name: 'Collections', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(target).toBeFocused();
+  const fresh = await ids(page, 'Large seasonal collection');
+  expect(fresh.slice(0, 59)).toEqual(Array.from({ length: 59 }, (_, index) => `season-film-${index}`));
+  expect(fresh[59]).toBe('season-film-60');
 });
