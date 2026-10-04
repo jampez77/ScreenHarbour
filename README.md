@@ -10,11 +10,11 @@
 
 Cinematic browsing for Jellyfin’s **TV and desktop layouts**, inspired by Netflix and built using the integration and remote-control patterns from [InPlayerEpisodePreview-TV](https://github.com/jampez77/InPlayerEpisodePreview-TV). ScreenHarbour is an independent project, not affiliated with or endorsed by Jellyfin. The name follows [Jellyfin’s third-party branding guidance](https://jellyfin.org/docs/general/contributing/branding/). Formerly **Jellyfin Cinema** and **TV Item Layout**, with the same plugin identity and upgrade path.
 
-[**Try the demo**](https://jampez77.github.io/ScreenHarbour/?layout=desktop&featured=0#/home) · [Screenshots](#screenshots) · [Install](#install) · [Release notes](docs/releases/v0.2.47.md)
+[**Try the demo**](https://jampez77.github.io/ScreenHarbour/?layout=desktop&featured=0#/home) · [Screenshots](#screenshots) · [Install](#install) · [Release notes](docs/releases/v0.2.48.md)
 
 This plugin brings one cinematic style to Home, Movies, TV Shows, Music, Recordings, Collections and the main Live TV guide. It also includes provider Home pages, browsing during video playback and a pause screen. Media artwork, metadata, collections, recommendations, favourites and playback positions come from your signed-in Jellyfin library. Provider pages match that library to UK streaming availability from JustWatch through TMDB, with Disney studio titles also included on Disney+.
 
-**0.2.47 is available as a prerelease** ([release notes](docs/releases/v0.2.47.md)) for Jellyfin 10.10.7, 10.11.x and 12.x. TV mode now uses smaller, more compressed photographic seasonal artwork, and seasonal backgrounds load as their rows approach the viewport. Row positions and item browsing remain available immediately. Desktop retains the original artwork; all saved settings and seasonal effects are preserved. Update the plugin, restart Jellyfin and fully reopen clients.
+**0.2.48 is available as a prerelease** ([release notes](docs/releases/v0.2.48.md)) for Jellyfin 10.10.7, 10.11.x and 12.x. Seasonal navigation avoids repeated Home scans and updates only the doors whose focus changes. A new **Full screen** focus height expands the row beneath the header, with a larger title in a distinct local font for each seasonal artwork style. Existing settings, smaller TV images and lazy loading are preserved. Update the plugin, restart Jellyfin and fully reopen clients.
 
 ## Try the demo
 
@@ -101,14 +101,14 @@ Choose **Add seasonal group** to reserve one position for seasonal content, then
 A seasonal sub-row also has an **Appearance** tab. Choose **Normal**, **Halloween** or **Christmas**, then configure its scenery and items independently:
 
 - **Background:** none, static scenery behind the scrolling items, or gently moving parallax scenery. The top and bottom fade into Home's background.
-- **Height when focused:** standard height, roomier (up to 1.5×), or immersive (up to 2×). Extra space reveals more scenery; posters keep their size. Growth is limited to the available screen space and ends when item focus leaves the row.
+- **Height when focused:** standard height, roomier (up to 1.5×), immersive (up to 2×), or **Full screen**. Extra space reveals more scenery; posters keep their size. Growth is limited to the available screen space and ends when item focus leaves the row. Full screen fills the space below Jellyfin’s header and transforms the heading into larger themed lettering, with a different locally bundled font for each scenery style. Up/Down still moves between ordinary Home rows. The editor previews the effect at a smaller scale.
 - **Artwork styles:** choose scenery, frames and doors/shutters independently. **Illustrated** and **Playful / family** suit both seasons; **Photorealistic** adds atmospheric Halloween or cosy Christmas imagery. Halloween also offers **Nightmare — very scary**, intended for adult horror collections. Selecting Christmas removes any Nightmare choices. Illustrated is the default.
 - **Themed item frames:** spooky window frames or festive advent-style frames.
 - **Rank number style:** enable **Ranked artwork** in Content to theme the number images beside posters. **Match frame style** follows the selected frame artwork by default. Choose **Standard numbers**, **Illustrated**, **Playful / family**, **Textured**, or Halloween-only **Nightmare** independently in Appearance. The preview updates immediately.
 - **Item reveal:** always visible, opening doors, window shutters or drawing curtains. A covered item's artwork and title appear when focused or hovered and close when you move away. Christmas doors show sequential numbers; these are item positions, not calendar locks.
 - **Advent calendar doors:** Christmas collection-item rows can use a numbered single-opening flap for each film, independently of Ranked artwork. Choose Illustrated, Playful / family or Gilded winter wood. **Daily from season start** opens door 1 on the start date, door 2 the following local day, and so on; a 1 December start makes a traditional advent calendar. Future doors stay closed and show their opening date. **Open any door on focus** removes the date restriction. Daily calendars ignore shuffle and use your Item order; keep the source collection and ordering fixed during the calendar if each film should retain its day. Preview doors always open, even outside the season. Calendar doors affect this Home row; they do not restrict access to films elsewhere in Jellyfin.
 
-The live preview uses the same scenery and focus behavior as Home. **Save rows** applies your choices to the account; **Cancel** discards the draft. Normal removes all optional decoration. Decorations do not change season dates, and out-of-season rows still take no space. Reduced-motion preferences disable animated transitions and parallax movement. Existing rows remain normal until you choose a theme; no settings migration is needed. Generated photorealistic artwork is bundled with the plugin and demo, with no external image-service requests during use.
+The live preview uses the same scenery and focus behavior as Home. **Save rows** applies your choices to the account; **Cancel** discards the draft. Normal removes all optional decoration. Decorations do not change season dates, and out-of-season rows still take no space. Reduced-motion preferences disable animated transitions and parallax movement. Existing rows remain normal until you choose a theme; no settings migration is needed. Generated photorealistic artwork and the seven themed title fonts are bundled with the plugin and demo, with no external image or font service requests during use. Font attribution and SIL Open Font License notices are in [seasonal fonts](assets/seasonal-fonts/README.md).
 
 Under **Item order**, enable **Shuffle on load** for a normal row or a seasonal sub-row. Home shuffles its collection tiles or members on each visit. Background refreshes keep the current order stable and add new members without rearranging the existing ones. Saved manual ordering and Jellyfin collections are unchanged; turning shuffle off restores the chosen order. The editor shows a sample shuffle.
 
@@ -142,7 +142,7 @@ Open [the local preview](http://127.0.0.1:4173) or [desktop mode](http://127.0.0
 
 ## Install
 
-The [v0.2.47 prerelease](https://github.com/jampez77/ScreenHarbour/releases/tag/v0.2.47) supports Jellyfin 10.10.7, 10.11.x and 12.x and is intended for server testing. Physical Mac mini/TV deployment and remote testing have not been performed for this release. See the [0.2.47 release notes](docs/releases/v0.2.47.md) for changes and validation status.
+The [v0.2.48 prerelease](https://github.com/jampez77/ScreenHarbour/releases/tag/v0.2.48) supports Jellyfin 10.10.7, 10.11.x and 12.x and is intended for server testing. Physical Mac mini/TV deployment and remote testing have not been performed for this release. See the [0.2.48 release notes](docs/releases/v0.2.48.md) for changes and validation status.
 
 In **Dashboard → Plugins → Repositories**, add:
 
@@ -158,7 +158,7 @@ To build the packages locally:
 bash scripts/package-plugin.sh all
 ```
 
-The published builds are `0.2.47.1` for 10.10.7, `0.2.47.2` for 10.11.x and `0.2.47.3` for 12.x. Archives retain their `TvItemLayout_…` names. Release preparation is documented in [publishing](docs/publishing.md).
+The published builds are `0.2.48.1` for 10.10.7, `0.2.48.2` for 10.11.x and `0.2.48.3` for 12.x. Archives retain their `TvItemLayout_…` names. Release preparation is documented in [publishing](docs/publishing.md).
 
 ## Verify
 

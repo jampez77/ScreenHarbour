@@ -29,6 +29,6 @@ export function createHomeCollectionTransport(client: Client, isCurrent: () => b
     load: () => request(() => client.getJSON(client.getUrl('TvItemLayout/HomeCollections'))),
     save: (settings, revision) => request(() => client.ajax({ type: 'PUT', url: client.getUrl('TvItemLayout/HomeCollections'),
       data: JSON.stringify({ Revision: revision, Settings: boundedHomeSettings(settings) }), contentType: 'application/json', dataType: 'json',
-      headers: { 'X-ScreenHarbour-Home-Rows': '5' } }))
+      headers: { 'X-ScreenHarbour-Home-Rows': '6' } }))
   };
 }

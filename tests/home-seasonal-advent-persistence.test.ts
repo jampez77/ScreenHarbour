@@ -57,7 +57,7 @@ test('advent choices survive native sync and cache reload with account isolation
   let current = true, writes = 0;
   const transport = createHomeCollectionTransport({ getUrl: path => '/jellyfin/' + path,
     getJSON: async () => structuredClone(saved), ajax: async options => {
-      assert.equal(options.headers['X-ScreenHarbour-Home-Rows'], '5');
+      assert.equal(options.headers['X-ScreenHarbour-Home-Rows'], '6');
       assert.equal(options.url, '/jellyfin/TvItemLayout/HomeCollections');
       const request = JSON.parse(options.data);
       assert.deepEqual(Object.keys(request).sort(), ['Revision', 'Settings']);

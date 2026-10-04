@@ -28,7 +28,7 @@ public static class HomeCollectionsAppearanceChecks
 
         var undecorated = HomeCollectionsSeasonalChecks.Settings();
         var empty = JsonSerializer.SerializeToElement(new { version = 1, rows = Array.Empty<object>() });
-        foreach (var capability in new[] { "", "2", "3,2", "6" })
+        foreach (var capability in new[] { "", "2", "3,2", "7" })
         {
             controller.Request.Headers["X-ScreenHarbour-Home-Rows"] = capability;
             assert(Value(await controller.GetHomeCollections()).Settings!.Value.GetRawText() == settings.GetRawText(),
