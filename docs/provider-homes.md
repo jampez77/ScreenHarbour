@@ -27,7 +27,7 @@ For individual titles, use **Add to collection** on a film or show to create or 
 
 **Source order** preserves the order of a collection, including a chart collection. Automatic catalogue rows use title order for this option. Other choices are title A–Z, title Z–A, newest release year and oldest release year. Rank artwork is a numbered image beside each poster, starting at 1 in the displayed order. Reordering or ranking a row does not change the underlying Jellyfin collection or supply a new popularity score.
 
-Choices sync through Jellyfin for the signed-in account. Home and open provider pages check for settings changes every minute while visible and when the app regains focus. Provider pages update changed rows and featured artwork while preserving a still-valid selection. Native Home choices and **Collections → Customize Home rows** remain separate. A conflicting save keeps your draft visible and offers **Reload saved settings**; reloading replaces the draft with the server copy. Opening Settings or Home on a fresh device does not write default settings over an existing account configuration.
+Choices sync through Jellyfin for the signed-in account. Home and open provider pages check for settings changes every minute while visible and when the app regains focus. Provider pages update changed rows and featured artwork while preserving a still-valid selection. Native Home choices and **Settings → ScreenHarbour → Collection rows** remain separate. A conflicting save keeps your draft visible and offers **Reload saved settings**; reloading replaces the draft with the server copy. Opening Settings or Home on a fresh device does not write default settings over an existing account configuration.
 
 ## Where the content comes from
 

@@ -2,8 +2,6 @@ import type { Item, MediaApi } from './types';
 import { button, el, icon, picture, replace } from './dom';
 import { attachRemote } from './remote';
 import { plainText } from './utils';
-import { HomeCollectionEditor } from './home-collection-editor';
-import { isDesktopLayout } from './layout';
 import { AdminItemActions } from './admin-item-actions';
 
 type CollectionOptions = {
@@ -34,8 +32,6 @@ export class CollectionView {
   private disposed = false;
   private revision = 0;
   private focusId: string;
-  private editor?: HomeCollectionEditor;
-  private layoutObserver: MutationObserver;
   private adminActions: AdminItemActions;
 
   constructor(private api: MediaApi, private options: CollectionOptions) {
@@ -51,17 +47,6 @@ export class CollectionView {
     this.backButton = button('Back', 'back', 'tvl-back', options.back);
     this.backButton.dataset.focusId = 'back';
     header.append(this.backButton);
-    const customize = button('Customize Home rows', 'grid', 'tvl-collection-customize', () => {
-      if (this.editor || this.disposed || !isDesktopLayout()) return;
-      this.removeRemote(); this.element.setAttribute('aria-modal', 'false');
-      this.editor = new HomeCollectionEditor(this.api, restore => {
-        this.editor = undefined;
-        if (this.disposed) return;
-        this.element.setAttribute('aria-modal', 'true'); this.removeRemote = attachRemote(this.element, this.options.back);
-        if (restore) (isDesktopLayout() && customize.isConnected ? customize : this.backButton).focus({ preventScroll: true });
-      });
-    });
-    customize.dataset.focusId = 'collections:customize';
     const copy = el('div', 'tvl-collection-hero-copy');
     copy.append(el('h1', 'tvl-collection-title', options.item?.Name || 'Collections'));
     const overview = plainText(options.item?.Overview);
@@ -74,20 +59,7 @@ export class CollectionView {
     this.content.append(header, this.hero, this.body);
     this.element.append(this.content);
     this.removeRemote = attachRemote(this.element, options.back);
-    const updateCustomize = () => {
-      if (this.disposed) return;
-      if (isDesktopLayout()) {
-        if (customize.parentElement !== header) header.append(customize);
-      } else {
-        const restore = document.activeElement === customize || !!this.editor?.element.contains(document.activeElement);
-        this.editor?.destroy(); customize.remove();
-        if (restore && this.element.isConnected) this.backButton.focus({ preventScroll: true });
-      }
-    };
-    this.layoutObserver = new MutationObserver(updateCustomize);
-    this.layoutObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    this.layoutObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    updateCustomize();
+
   }
 
   async load(): Promise<void> {
@@ -208,8 +180,6 @@ export class CollectionView {
   destroy(): void {
     this.disposed = true;
     this.revision++;
-    this.layoutObserver.disconnect();
-    this.editor?.destroy(); this.editor = undefined;
     this.adminActions.destroy();
     this.removeRemote();
     this.element.remove();

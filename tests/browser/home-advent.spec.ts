@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { defaultSeasonalAppearance, type HomeCollectionRow, type HomeSeasonalArtStyle } from '../../src/home-collection-settings';
 import { useDesktopLayout } from './layout-fixture';
 
@@ -39,8 +40,7 @@ async function homeFixture(page: Page, row = adventRow(), date = '2026-12-01T12:
 
 async function openEditor(page: Page) {
   await useDesktopLayout(page);
-  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await expect(editor(page).getByRole('button', { name: 'Save rows', exact: true })).toBeEnabled();
 }
 

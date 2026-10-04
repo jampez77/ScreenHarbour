@@ -38,7 +38,6 @@
 .tvl-home-collection-row { padding:0 var(--sidePadding,4.5vw); color:#f5f5f2; }
 .tvl-home-row-status { color:#b9c4bd; padding:.5rem 0; }
 .tvl-home-collection-row .tvl-button,.tvl-home-collections>.tvl-home-row-status .tvl-button { background:#24332a;color:#f5f5f2;border:1px solid #ffffff30;border-radius:6px;padding:.7rem 1rem; }
-.tvl-collection-customize { margin-left:auto; font-size:.8em!important; }
 .tvl-home-editor { position:fixed;top:0;right:0;bottom:0;left:0;z-index:100000;background:#101112;color:#f5f5f2;overflow:auto;font:1rem/1.5 'Segoe UI','Helvetica Neue',Arial,sans-serif; }
 .tvl-home-editor * { box-sizing:border-box; }
 .tvl-home-editor-panel { width:100%;max-width:1440px;margin:0 auto;padding:3vh 3.5vw 5vh; }
@@ -94,7 +93,7 @@
 .tvl-home-position-order>li>.tvl-button+.tvl-button { margin-left:.6rem;font-size:.8rem; }
 .tvl-home-position-selected { background:#324739;border:1px solid #d3e7de; }
 @media(max-width:800px){.tvl-home-editor-panel{padding:1.3rem}.tvl-home-editor-layout{grid-template-columns:minmax(160px,25%) minmax(0,1fr);grid-gap:1rem}.tvl-home-editor-workspace{padding:1rem}.tvl-home-collection-choices{grid-template-columns:1fr}.tvl-home-editor-header{align-items:flex-start}.tvl-home-editor h1{font-size:1.5rem}.tvl-home-row-card{width:10rem}.tvl-home-row-art{height:14.5rem}.tvl-home-ranked{width:15.5rem}.tvl-home-rank{width:6.5rem;height:12rem}.tvl-home-position-order>li{flex-wrap:wrap}.tvl-home-position-order>li>.tvl-button:first-child{min-width:100%;margin-bottom:.5rem}}
-@media(max-width:520px){.tvl-home-editor-layout{grid-template-columns:1fr}.tvl-home-editor-sidebar{position:static;max-height:14rem}.tvl-home-editor-header{display:block}.tvl-home-editor-header>.tvl-home-editor-actions{margin-top:.7rem}.tvl-home-editor-heading{align-items:flex-start}.tvl-collection-customize{max-width:60%}}
+@media(max-width:520px){.tvl-home-editor-layout{grid-template-columns:1fr}.tvl-home-editor-sidebar{position:static;max-height:14rem}.tvl-home-editor-header{display:block}.tvl-home-editor-header>.tvl-home-editor-actions{margin-top:.7rem}.tvl-home-editor-heading{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){.tvl-home-row-card{transition:none}}
 .tvl-home-editor .tvl-primary:hover,.tvl-home-editor .tvl-button[aria-pressed=true]:hover { background:#c4d9cf;color:#101b14; }
 .tvl-home-editor-header { position:sticky;top:0;z-index:3;background:#101112;padding:.7rem 0;box-shadow:0 12px 16px #101112; }

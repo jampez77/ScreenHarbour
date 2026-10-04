@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { useDesktopLayout } from './layout-fixture';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -135,9 +136,8 @@ test('editor preview keeps the shared thumbnail/rank proportions and scrolls wit
     const art=card.querySelector('.tvl-home-row-art')!.getBoundingClientRect(),rank=card.querySelector('.tvl-home-rank')!.getBoundingClientRect();
     return {art:art.width/art.height,rank:rank.width/art.width};
   });
-  await page.evaluate(()=>{location.hash='/list?parentId=library-collections';});
   await useDesktopLayout(page);
-  await page.getByRole('button',{name:'Customize Home rows',exact:true}).click();
+  await openCollectionRowsFromSettings(page);
   const editor=page.getByRole('dialog',{name:'Customize Home rows',exact:true});
   await editor.locator('.tvl-home-row-choice').filter({hasText:'Trending films'}).click();
   const preview=editor.getByRole('complementary',{name:'Home row preview',exact:true});

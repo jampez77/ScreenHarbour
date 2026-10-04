@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { defaultSeasonalAppearance, rankImage, type HomeCollectionRow, type HomeSeasonalAppearance, type HomeSeasonalArtStyle } from '../../src/home-collection-settings';
 import { useDesktopLayout } from './layout-fixture';
 
@@ -33,8 +34,7 @@ async function fixture(page: Page, appearance: Partial<HomeSeasonalAppearance> =
 
 async function openEditor(page: Page, title = 'Seasonal') {
   await useDesktopLayout(page);
-  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await expect(editor(page).getByRole('button', { name: 'Save rows', exact: true })).toBeEnabled();
   await editor(page).locator('[data-editor-row="seasonal"]').click();
   await editor(page).getByRole('button', { name: `Edit ${title}`, exact: true }).click();

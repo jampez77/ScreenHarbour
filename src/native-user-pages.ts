@@ -1,5 +1,6 @@
 import { el } from './dom';
 import { brandLabel } from './interface-branding';
+import { isDesktopLayout } from './layout';
 import { currentUserAccount, isCurrentUserAdministrator, sameUserAccount, type CurrentUserAccount } from './current-user-policy';
 
 const preferences = /^(mypreferencesmenu|mypreferencesdisplay|mypreferenceshome|mypreferencesplayback|mypreferencessubtitles|mypreferencescontrols|userprofile|quickconnect)\/?$/i;
@@ -15,6 +16,8 @@ export class NativeUserPages {
   private administrator = false;
   private section?: HTMLElement;
   private providerSection?: HTMLElement;
+  private collectionsLink?: HTMLAnchorElement;
+  private collectionsReturnScope?: string;
   private activating = false;
   private observer: MutationObserver;
 
@@ -24,6 +27,8 @@ export class NativeUserPages {
     window.addEventListener('hashchange', this.onRoute);
     window.addEventListener('popstate', this.onRoute);
     document.addEventListener('viewshow', this.onShow, true);
+    window.addEventListener('keydown', this.cancelReturnFocus, true);
+    window.addEventListener('pointerdown', this.cancelReturnFocus, true);
   }
 
   update(enabled: boolean, scope: string | null): void {
@@ -59,6 +64,10 @@ export class NativeUserPages {
   }
 
   private removeDashboard(): void { this.section?.remove(); }
+  restoreCollectionsFocus(): void {
+    if (this.scope && isDesktopLayout()) this.collectionsReturnScope = this.scope;
+  }
+  private cancelReturnFocus = (): void => { this.collectionsReturnScope = undefined; };
   private attachDashboard(): void {
     this.attachProviderSettings();
     if (this.disposed || !this.administrator || !this.ownSettings() || !sameUserAccount(this.account)) { this.removeDashboard(); return; }
@@ -96,6 +105,7 @@ export class NativeUserPages {
   }
 
   private attachProviderSettings(): void {
+    if (!this.enabled || !isDesktopLayout() || this.collectionsReturnScope !== this.scope) this.collectionsReturnScope = undefined;
     const editedUser = new URLSearchParams(location.hash.split('?')[1] || '').get('userId');
     const userId = currentUserAccount()?.userId || window.TvItemLayoutDemo?.api.userId;
     const own = this.enabled && !!this.scope && /^mypreferencesmenu\/?$/i.test(this.path()) && (!editedUser || editedUser === userId);
@@ -106,6 +116,11 @@ export class NativeUserPages {
     if (!this.providerSection) {
       this.providerSection = el('section', 'verticalSection tvl-settings-providers');
       this.providerSection.append(brandLabel('h2', 'sectionTitle'));
+      this.collectionsLink = el('a', 'emby-button show-focus listItem-border tvl-settings-collections-link');
+      const collectionsItem = el('div', 'listItem');
+      const collectionsGlyph = el('span', 'material-icons listItemIcon listItemIcon-transparent', 'collections_bookmark'); collectionsGlyph.setAttribute('aria-hidden', 'true');
+      const collectionsText = el('div', 'listItemBody'); collectionsText.append(el('div', 'listItemBodyText', 'Collection rows'), el('div', 'listItemBodyText secondary', 'Home collections and seasonal rows'));
+      collectionsItem.append(collectionsGlyph, collectionsText); this.collectionsLink.append(collectionsItem);
       const link = el('a', 'emby-button show-focus listItem-border tvl-settings-provider-link'); link.href = '#/mypreferencesmenu?cinemaProviders=1';
       const item = el('div', 'listItem');
       const glyph = el('span', 'material-icons listItemIcon listItemIcon-transparent', 'video_library'); glyph.setAttribute('aria-hidden', 'true');
@@ -117,10 +132,25 @@ export class NativeUserPages {
       const loadingText = el('div', 'listItemBody'); loadingText.append(el('div', 'listItemBodyText', 'Loading screen'), el('div', 'listItemBodyText secondary', 'Animation and custom text'));
       loadingItem.append(loadingGlyph, loadingText); loading.append(loadingItem); this.providerSection.append(loading);
     }
+    if (isDesktopLayout()) {
+      const params = new URLSearchParams({ cinemaCollections: '1' });
+      const serverId = new URLSearchParams(location.hash.split('?')[1] || '').get('serverId');
+      if (serverId) params.set('serverId', serverId);
+      const href = `#/mypreferencesmenu?${params}`;
+      if (this.collectionsLink!.getAttribute('href') !== href) this.collectionsLink!.href = href;
+      if (!this.collectionsLink!.parentElement) this.providerSection.insertBefore(this.collectionsLink!, this.providerSection.children[1] || null);
+    } else this.collectionsLink?.remove();
     if (this.providerSection.parentElement !== host) host.append(this.providerSection);
+    const params = new URLSearchParams(location.hash.split('?')[1] || '');
+    if (this.collectionsReturnScope && !params.has('cinemaCollections') && !params.has('cinemaProviders') && !params.has('cinemaLoading')) {
+      this.collectionsReturnScope = undefined; this.collectionsLink?.focus({ preventScroll: true });
+    }
   }
 
-  private onRoute = (): void => { this.context = ''; this.refresh(); };
+  private onRoute = (): void => {
+    if (!/^mypreferencesmenu\/?$/i.test(this.path())) this.collectionsReturnScope = undefined;
+    this.context = ''; this.refresh();
+  };
   private onShow = (event: Event): void => {
     if ((event.target as HTMLElement)?.id === 'myPreferencesMenuPage') { this.context = ''; this.refresh(); }
   };
@@ -131,5 +161,7 @@ export class NativeUserPages {
     this.observer.disconnect(); this.removeDashboard(); this.section = undefined; this.providerSection?.remove(); this.providerSection = undefined;
     window.removeEventListener('hashchange', this.onRoute); window.removeEventListener('popstate', this.onRoute);
     document.removeEventListener('viewshow', this.onShow, true);
+    window.removeEventListener('keydown', this.cancelReturnFocus, true);
+    window.removeEventListener('pointerdown', this.cancelReturnFocus, true);
   }
 }

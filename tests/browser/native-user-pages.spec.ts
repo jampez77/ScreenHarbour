@@ -253,3 +253,45 @@ test('Cinema Search and Settings remain readable and focusable over the actual E
   })).toBeLessThan(1);
   await page.screenshot({ path: '/tmp/jellyfin-cinema-settings-elegantfin.png' });
 });
+
+test('desktop non-admin Settings exposes Collection rows beside streaming and loading preferences and preserves server context', async ({ page }) => {
+  await setup(page, 'mypreferencesmenu?serverId=family-server', false, 'desktop'); await settingsMarkup(page);
+  const link=page.locator('.tvl-settings-collections-link');
+  await expect(link).toBeVisible();
+  await expect(link.getByText('Collection rows',{exact:true})).toBeVisible();
+  await expect(link.getByText('Home collections and seasonal rows',{exact:true})).toBeVisible();
+  const group=link.locator('xpath=..');
+  await expect(group.locator('.tvl-settings-provider-link')).toBeVisible();
+  await expect(group.locator('.tvl-settings-loading-link')).toBeVisible();
+  await expect(group.getByRole('heading',{name:/^ScreenHarbour$/i})).toBeVisible();
+  await expect(page.locator('.tvl-settings-dashboard')).toHaveCount(0);
+  const href=await link.getAttribute('href');
+  const params=new URLSearchParams(href!.split('?')[1]);
+  expect(params.get('cinemaCollections')).toBe('1'); expect(params.get('serverId')).toBe('family-server');
+  // Native preference rebuilding may replace its children; attach just one
+  // collection link to the rebuilt ScreenHarbour group without replacing native controls.
+  await group.evaluate(node=>node.remove());
+  await expect(link).toHaveCount(1);
+  await expect(link).toBeVisible();
+  await expect(page.getByRole('link',{name:'Profile',exact:true})).toBeVisible();
+  await link.focus(); await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog',{name:'Customize Home rows',exact:true})).toBeVisible();
+});
+
+test('Collection rows is absent from another user’s preferences and from TV or mobile Settings', async ({ page }) => {
+  await setup(page, 'mypreferencesmenu?userId=someone-else', true, 'desktop'); await settingsMarkup(page);
+  await expect(page.locator('.tvl-settings-collections-link')).toHaveCount(0);
+  await expect(page.locator('.tvl-settings-providers')).toHaveCount(0);
+  await page.evaluate(()=>{location.hash='/mypreferencesmenu?userId=demo';});
+  await expect(page.locator('.tvl-settings-collections-link')).toBeVisible();
+  await page.evaluate(()=>{document.documentElement.classList.add('layout-tv');});
+  await expect(page.locator('.tvl-settings-collections-link')).toHaveCount(0);
+  await expect(page.locator('.tvl-settings-provider-link')).toBeVisible();
+  await page.evaluate(()=>{document.documentElement.classList.replace('layout-tv','layout-mobile');});
+  await expect(page.locator('.tvl-settings-collections-link')).toHaveCount(0);
+  await page.evaluate(()=>{document.documentElement.classList.remove('layout-mobile');});
+  await expect(page.locator('.tvl-settings-collections-link')).toBeVisible();
+  await page.evaluate(()=>window.TvItemLayout!.destroy());
+  await expect(page.locator('.tvl-settings-collections-link')).toHaveCount(0);
+  await expect(page.getByRole('link',{name:'Profile',exact:true})).toBeVisible();
+});

@@ -1,10 +1,11 @@
 import { LoadingSettingsEditor } from './loading-settings-editor';
+import { HomeCollectionEditor } from './home-collection-editor';
 import { InterfaceBranding } from './interface-branding';
 import loadingAnimationStyles from './loading-animation.css';
 import loadingSettingsStyles from './loading-settings.css';
 import adminItemActionStyles from './admin-item-actions.css';
 import styles from './style.css';
-import { isCinemaLayout } from './layout';
+import { isCinemaLayout, isDesktopLayout } from './layout';
 import { DesktopPlayer } from './desktop-player';
 import guideStyles from './guide.css';
 import themeVideoStyles from './theme-video.css';
@@ -57,7 +58,7 @@ import type { MediaApi, Item } from './types';
 // jampez77/InPlayerEpisodePreview-TV and Namo2/InPlayerEpisodePreview (MIT).
 window.TvItemLayout?.destroy();
 const sheet=document.createElement('style');sheet.dataset.tvItemLayout='';sheet.textContent=styles+guideStyles+themeVideoStyles+collectionStyles+libraryStyles+nativeHostStyles+browseStyles+recordingsStyles+musicPlayerStyles+homeStyles+homeCollectionStyles+seasonalAppearanceStyles+seasonalEditorStyles+pauseStyles+playerStyles+profileMenuStyles+nativeFolderStyles+loginStyles+nativeUserPageStyles+channelZapperStyles+providerHomeStyles+providerSettingsStyles+trailerActionStyles+loadingAnimationStyles+loadingSettingsStyles+adminItemActionStyles;document.head.append(sheet);
-let view:DetailView|GuideView|CollectionView|LibraryView|BrowseView|ProviderHomeView|ProviderSettingsEditor|LoadingSettingsEditor|null=null;
+let view:DetailView|GuideView|CollectionView|LibraryView|BrowseView|ProviderHomeView|ProviderSettingsEditor|LoadingSettingsEditor|HomeCollectionEditor|null=null;
 let providerPreview:ProviderData|undefined;
 let homeCollections:HomeCollections|null=null;
 let homeSessionCurrent:(()=>boolean)|undefined;
@@ -90,7 +91,7 @@ let stopThemeVideo: (() => void) | undefined;
 const nativePages='.itemDetailPage, #itemDetailPage, .liveTvPage, #liveTvSuggestedPage, .mainAnimatedPage, #boxsetsPage, #moviesPage, #tvRecommendedPage, #indexPage, #musicRecommendedPage';
 type CollectionRoute = {kind:'collections';parentId?:string;scope:'list'|'boxsets'|'movies';verifyParent?:boolean};
 type BrowseRoute = ({kind:'home'}|{kind:'music'}|{kind:'recordings'}) & {parentId?:string;tab?:BrowseTab;scope?:'list'|'livetv'|'playlists'};
-type Route = {kind:'loading-settings'}|{kind:'detail';id:string}|{kind:'guide'}|{kind:'provider';provider:ProviderId;rowId?:string}|{kind:'provider-settings';providerId?:ProviderId}|{kind:'movies';parentId?:string;tab:LibraryTab}|{kind:'shows';parentId?:string;tab:LibraryTab}|CollectionRoute|BrowseRoute;
+type Route = {kind:'collection-settings'}|{kind:'loading-settings'}|{kind:'detail';id:string}|{kind:'guide'}|{kind:'provider';provider:ProviderId;rowId?:string}|{kind:'provider-settings';providerId?:ProviderId}|{kind:'movies';parentId?:string;tab:LibraryTab}|{kind:'shows';parentId?:string;tab:LibraryTab}|CollectionRoute|BrowseRoute;
 function close(restore=true,destroyHome=false):void{
   // Jellyfin keeps its native Home mounted during detail/playback navigation.
   // Keep our rows alongside it so Back can reuse their artwork and controls.
@@ -107,6 +108,8 @@ function close(restore=true,destroyHome=false):void{
 function currentRoute():Route|null{
   const [path,query='']=location.hash.replace(/^#\/?/,'').split('?');
   const params=new URLSearchParams(query);
+  if(/^mypreferencesmenu\/?$/i.test(path)&&params.get('cinemaCollections')==='1'
+    &&onlyParams(params,['cinemaCollections','serverId'])&&isDesktopLayout())return {kind:'collection-settings'};
   if(/^mypreferencesmenu\/?$/i.test(path)&&params.get('cinemaLoading')==='1'
     &&onlyParams(params,['cinemaLoading','serverId']))return {kind:'loading-settings'};
   if(/^mypreferencesmenu\/?$/i.test(path)&&params.get('cinemaProviders')==='1'
@@ -220,7 +223,7 @@ function ensureProviderVisit(api:MediaApi,provider:ProviderId):void{
 }
 function hideNativeHost(route:Route):void{
   if(route.kind==='home')return;
-  if(route.kind==='provider'||route.kind==='provider-settings'||route.kind==='loading-settings'){
+  if(route.kind==='provider'||route.kind==='provider-settings'||route.kind==='loading-settings'||route.kind==='collection-settings'){
     nativeHostMask.setSelector(route.kind==='provider'?'#indexPage':'#myPreferencesMenuPage');return;
   }
   const selector=route.kind==='music'&&!route.scope?'#musicRecommendedPage':route.kind==='guide'||route.kind==='recordings'&&route.scope==='livetv'?'.liveTvPage, #liveTvSuggestedPage':route.kind==='detail'?'.itemDetailPage, #itemDetailPage':route.kind==='shows'?'#tvRecommendedPage':route.kind==='movies'||route.kind==='collections'&&route.scope==='movies'?'#moviesPage':route.kind==='collections'&&route.scope==='boxsets'?'#boxsetsPage':'.mainAnimatedPage, [data-role="page"].libraryPage';
@@ -256,6 +259,11 @@ function refresh():void{
   if(pendingHash && pendingHash!==location.hash){pendingHash='';probeRevision++;}
   if(!cinema||!route){
     dismissed='';pendingHash='';probeRevision++;
+    if(view instanceof HomeCollectionEditor && cinema && /^#\/?mypreferencesmenu\/?(?:\?|$)/i.test(location.hash)) nativeUserPages.restoreCollectionsFocus();
+    if(view instanceof HomeCollectionEditor && !isDesktopLayout() && /^#\/?mypreferencesmenu\/?(?:\?|$)/i.test(location.hash)){
+      const params=new URLSearchParams(location.hash.split('?')[1]||'');params.delete('cinemaCollections');
+      history.replaceState(history.state,'',`#/mypreferencesmenu${params.toString()?`?${params}`:''}`);
+    }
     // Authentication routes can appear before Jellyfin clears its old client.
     const authentication=/^#\/?(?:login|selectserver)\/?(?:\?|$)/i.test(location.hash);
     close(false,!cinema||!api||authentication);return;
@@ -403,6 +411,20 @@ function openRoute(route:Route,api:MediaApi,key:string):void{
     view=new ProviderSettingsEditor(api,{onBack:back,providerId:route.providerId,loadPreview:async(provider,row)=>(await data.load(provider,row,0,8,true)).items});
   }
   else if(route.kind==='loading-settings')view=new LoadingSettingsEditor(api,{onBack:back});
+  else if(route.kind==='collection-settings'){
+    const fromSettings=!!previousFocus?.matches('.tvl-settings-collections-link');
+    view=new HomeCollectionEditor(api,restore=>{
+      if(!restore)return;
+      nativeUserPages.restoreCollectionsFocus();
+      if(fromSettings){back();return;}
+      // A bookmarked editor still closes into Settings, without leaving an
+      // editor entry for Back to reopen after Save or Cancel.
+      const params=new URLSearchParams();
+      const serverId=new URLSearchParams(location.hash.split('?')[1]||'').get('serverId')||api.serverId;
+      if(serverId)params.set('serverId',serverId);
+      history.replaceState(history.state,'',`#/mypreferencesmenu${params.toString()?`?${params}`:''}`);refreshNavigation();
+    });
+  }
   else if(route.kind==='guide')view=new GuideView(api,{back});
   else if(route.kind==='collections')view=new CollectionView(api,{openNative,parentId:route.parentId,back:()=>collectionBack(route),navigate:go,focusId});
   else if(route.kind==='movies'||route.kind==='shows'){
