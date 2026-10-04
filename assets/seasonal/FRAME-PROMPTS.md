@@ -1,6 +1,6 @@
 # Seasonal door and frame prompts
 
-Generated with the built-in image generation tool. Door images are opaque; frame images use generated alpha transparency. WebP files are format-compressed copies; no visual compositing or background removal was performed after generation.
+Generated with the built-in image generation tool. Door images are opaque; frame images use generated alpha transparency. Desktop WebP files are format-compressed copies; no visual compositing or background removal was performed after generation. TV copies (`*-tv.webp`) are resized to 600 pixels high at quality 70 using `bash scripts/optimize-seasonal-art.sh` and cwebp 1.6.0. Their original aspect ratios and frame transparency are retained; alpha encoding remains at quality 100.
 
 ## halloween-nightmare-door
 

@@ -8,6 +8,7 @@ import { seasonalRankImage } from './home-seasonal-rank';
 
 type AdventCard = { row: HomeCollectionRow; index: number; caption: HTMLElement | null; title: string; label: string; opensAt?: number; opensLabel?: string };
 const adventCards = new WeakMap<HTMLElement, AdventCard>();
+const pendingBackgrounds = new WeakMap<HTMLElement, () => void>();
 const dateChangeEvent = 'tvl-seasonal-date-change';
 
 function refreshAdventCard(card: HTMLElement, reveal = false): boolean {
@@ -130,6 +131,8 @@ function seasonalPixels(section: HTMLElement, property: string, value: number): 
 /** Measure once mounted so expansion reveals a fixed scene instead of stretching it. */
 export function refreshSeasonalBackdrop(section: HTMLElement): void {
   if (!section.classList.contains('tvl-seasonal-row') || !section.isConnected) return;
+  const startBackground = pendingBackgrounds.get(section);
+  if (startBackground) { pendingBackgrounds.delete(section); startBackground(); }
   const style = getComputedStyle(section);
   const base = Math.max(0, Math.round(section.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)));
   if (!Number.isFinite(base)) return;
@@ -147,15 +150,26 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   section.dataset.seasonalTheme = appearance.theme;
   section.dataset.seasonalBackground = appearance.background;
   section.dataset.seasonalExpansion = appearance.expansion;
-  let backdrop: HTMLElement | undefined;
-  if (appearance.background !== 'none') {
-    backdrop = el('div', 'tvl-seasonal-backdrop'); backdrop.setAttribute('aria-hidden', 'true');
-    backdrop.style.backgroundImage = `url("${seasonalBackground(appearance.theme, appearance.backgroundStyle)}")`;
-    section.prepend(backdrop);
-  }
-  const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const preview = () => !!section.closest('.tvl-home-preview');
   let hovered: HTMLElement | null = null, expanded = false, disposed = false;
+  let backdrop: HTMLElement | undefined;
+  let backdropObserver: IntersectionObserver | undefined;
+  let backgroundLoaded = false;
+  if (appearance.background !== 'none') {
+    backdrop = el('div', 'tvl-seasonal-backdrop'); backdrop.setAttribute('aria-hidden', 'true');
+    section.prepend(backdrop);
+  }
+  const loadBackground = () => {
+    if (!backdrop || backgroundLoaded || disposed || !section.isConnected) return;
+    backgroundLoaded = true;
+    pendingBackgrounds.delete(section);
+    backdropObserver?.disconnect(); backdropObserver = undefined;
+    // Keep the row and its expansion geometry ready from the first paint, but
+    // only request/decode its scenery as navigation approaches the row.
+    backdrop.style.backgroundImage = `url("${seasonalBackground(appearance.theme, appearance.backgroundStyle)}")`;
+    if (appearance.background === 'parallax') onScroll();
+  };
+  const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let scrollFrame = 0, settleFrame = 0, focusFrame = 0;
   let until = 0;
   const threeDimensional = appearance.reveal === 'doors' || appearance.reveal === 'shutters' || appearance.reveal === 'advent';
@@ -225,6 +239,9 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   const sync = () => {
     if (disposed) return;
     const focused = item(document.activeElement);
+    // Remote focus can jump directly into a row before the observer delivers
+    // its first callback. Mouse navigation and editor previews work likewise.
+    if (focused || hovered) loadBackground();
     cards.querySelectorAll<HTMLElement>('.tvl-home-row-card[data-seasonal-theme]').forEach(card => {
       const reveal = card === focused || card === hovered;
       const wasOpen = card.classList.contains('tvl-seasonal-item-open');
@@ -248,13 +265,12 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   const onLeave = () => { hovered = null; sync(); };
   const updateParallax = () => {
     scrollFrame = 0;
-    if (!backdrop || disposed) return;
+    if (!backdrop || !backgroundLoaded || disposed) return;
     const range = cards.scrollWidth - cards.clientWidth;
     const progress = range > 0 ? Math.max(0, Math.min(1, cards.scrollLeft / range)) : .5;
     backdrop.style.backgroundPosition = `${reduced() ? 50 : 35 + progress * 30}% center`;
   };
   const onScroll = () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(updateParallax); };
-  refreshSeasonalBackdrop(section);
   section.addEventListener('transitionend', onTransition);
   section.addEventListener(dateChangeEvent, sync);
   cards.addEventListener('focusin', onFocus);
@@ -262,9 +278,31 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   cards.addEventListener('pointerover', onPointer);
   cards.addEventListener('pointerleave', onLeave);
   if (appearance.background === 'parallax') { cards.addEventListener('scroll', onScroll, { passive: true }); onScroll(); }
+  if (backdrop) {
+    // Home may abandon a prepared row before mounting it. A weak initializer
+    // lets that DOM be collected without an observer retaining the whole row.
+    pendingBackgrounds.set(section, () => {
+      if (disposed || backgroundLoaded) return;
+      if (preview() || typeof IntersectionObserver !== 'function') loadBackground();
+      else try {
+        backdropObserver = new IntersectionObserver(entries => {
+          if (entries.some(entry => entry.isIntersecting || entry.intersectionRatio > 0)) loadBackground();
+        }, { rootMargin: '300px 0px' });
+        backdropObserver.observe(section);
+      } catch {
+        // Older TV clients must retain their artwork if observation is missing
+        // or fails, rather than waiting forever for an unavailable callback.
+        backdropObserver?.disconnect(); backdropObserver = undefined;
+        loadBackground();
+      }
+    });
+  }
+  refreshSeasonalBackdrop(section);
   sync();
   return () => {
     disposed = true; cancelAnimationFrame(scrollFrame); cancelAnimationFrame(settleFrame); cancelAnimationFrame(focusFrame);
+    pendingBackgrounds.delete(section);
+    backdropObserver?.disconnect(); backdropObserver = undefined;
     for (const timer of closing.values()) window.clearTimeout(timer);
     closing.clear();
     cards.querySelectorAll('.tvl-seasonal-reveal-active').forEach(card => card.classList.remove('tvl-seasonal-reveal-active'));

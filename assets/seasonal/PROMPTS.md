@@ -1,6 +1,6 @@
 # Seasonal background artwork prompts
 
-Generated with the built-in image generation tool. These are original fictional settings, not photographs of actual places. Original PNG outputs are preserved in `originals/`; deployment WebP files retain their original 2048×768 dimensions and use quality 90 encoding to keep TV loading fast. No crop, retouching or other visual edits were applied.
+Generated with the built-in image generation tool. These are original fictional settings, not photographs of actual places. Original PNG outputs are preserved in `originals/`; desktop WebP files retain their original 2048×768 dimensions and use quality 90 encoding. TV variants (`*-tv.webp`) are 1280×480, quality 60, encoded from the original PNGs with `bash scripts/optimize-seasonal-art.sh` and cwebp 1.6.0. They reduce download and decoded-pixel costs without cropping or altering the composition. Backgrounds remain opaque; the existing CSS edge fade is unchanged.
 
 ## halloween-photoreal
 
