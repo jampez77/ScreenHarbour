@@ -32,7 +32,7 @@ for suffix, target in [('3', '12.0.0'), ('2', '10.11.0'), ('1', '10.10.7')]:
     assert archive.with_suffix('.zip.sha256').read_text().split()[0] == hashlib.sha256(data).hexdigest()
     versions.append({
         'version': version,
-        'changelog': 'Fixes full-screen seasonal rows stopping short on initial focus when native smooth scrolling competes with expansion. Sets the final layout once and animates visual layers to reduce repainting. Speeds remote navigation by checking only needed controls and combining saved-position work. Preserves all settings, themed titles, doors, parallax and lazy-loaded TV artwork. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
+        'changelog': 'Fixes seasonal rows bouncing vertically during Left/Right navigation on TV. Uses Jellyfin’s custom-scroll contract so its delayed focus scrolling does not compete with ScreenHarbour’s seasonal-row positioning. Preserves all settings, expansion, themed titles, doors, parallax and lazy-loaded TV artwork. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
         'targetAbi': target,
         'sourceUrl': f'{release_url_prefix}v{release}/{archive.name}',
         # Jellyfin's catalogue protocol requires MD5; SHA-256 files are also published.

@@ -201,7 +201,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     if (appearance.background === 'parallax') onScroll();
   };
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let scrollFrame = 0, focusFrame = 0;
+  let scrollFrame = 0, focusFrame = 0, nativeEntryTimer = 0, nativeExitTimer = 0;
   const threeDimensional = appearance.reveal === 'doors' || appearance.reveal === 'shutters' || appearance.reveal === 'advent';
   const closing = new Map<HTMLElement, number>();
   const finishClosing = (card: HTMLElement) => {
@@ -263,8 +263,35 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     expanded = active;
     changeSeasonalExpansion(section, active, () => refreshSeasonalBackdrop(section));
   };
-  const onFocus = () => { hovered = null; cancelAnimationFrame(focusFrame); sync(); };
-  const onBlur = () => { hovered = null; cancelAnimationFrame(focusFrame); focusFrame = requestAnimationFrame(() => sync()); };
+  const onFocus = (event: FocusEvent) => {
+    hovered = null; cancelAnimationFrame(focusFrame); sync();
+    const previous = event.relatedTarget;
+    if (preview() || previous instanceof Node && cards.contains(previous)) return;
+    // Jellyfin's custom-scroller contract prevents new native animations, but
+    // a preceding native card can still have its deferred 270ms scroll running.
+    // Settle once after entry, including a quick hop through another custom
+    // row. Within-row Left/Right never restarts this correction, and leaving
+    // the row makes it a no-op.
+    window.clearTimeout(nativeEntryTimer);
+    nativeEntryTimer = window.setTimeout(() => {
+      nativeEntryTimer = 0;
+      if (!disposed && section.isConnected && cards.contains(document.activeElement)) settleSeasonalSelection();
+    }, 350);
+  };
+  const onBlur = (event: FocusEvent) => {
+    hovered = null; cancelAnimationFrame(focusFrame); focusFrame = requestAnimationFrame(() => sync());
+    const next = event.relatedTarget;
+    if (preview() || !(next instanceof HTMLElement) || cards.contains(next) || next.closest('[data-scroll-mode-y="custom"]')) return;
+    // Native centering can target a neighbour's temporary position while this
+    // row closes. Correct visibility once both animations finish, only if that
+    // exact control is still selected; newer native navigation stays in charge.
+    window.clearTimeout(nativeExitTimer);
+    nativeExitTimer = window.setTimeout(() => {
+      nativeExitTimer = 0;
+      if (!disposed && section.isConnected && next.isConnected && document.activeElement === next
+        && next.closest('#homeTab') === section.closest('#homeTab')) settleSeasonalSelection();
+    }, 350);
+  };
   const onPointer = (event: PointerEvent) => {
     // TV focus and touch activation must not leave a synthetic hover open.
     if (event.pointerType !== 'mouse') return;
@@ -315,6 +342,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   sync();
   return () => {
     disposed = true; cancelAnimationFrame(scrollFrame); cancelAnimationFrame(focusFrame); cancelSeasonalMotion();
+    window.clearTimeout(nativeEntryTimer); window.clearTimeout(nativeExitTimer);
     pendingMounts.delete(section);
     backdropObserver?.disconnect(); backdropObserver = undefined;
     for (const timer of closing.values()) window.clearTimeout(timer);
