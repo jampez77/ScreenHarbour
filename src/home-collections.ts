@@ -5,7 +5,7 @@ import { button, el, replace } from './dom';
 import { emptyHomeCollections, orderHomeItems, homeCollectionTabs, homeTabLabel, activeHomeRows, shuffleHomeItems, type HomeCollectionRow } from './home-collection-settings';
 import { createHomeCollectionStore, type HomeCollectionStore } from './home-collection-store';
 import { nativeHomeRows, rememberHomeRows } from './home-row-placement';
-import { decorateSeasonalRow, refreshSeasonalBackdrop, refreshSeasonalDate } from './home-seasonal-appearance';
+import { decorateSeasonalRow, refreshSeasonalBackdrop, refreshSeasonalDate, suspendSeasonalRow, resumeSeasonalRow } from './home-seasonal-appearance';
 import { scrollSeasonalSelectionIntoView, seasonalNavigationTop } from './home-seasonal-motion';
 import { dailyAdvent } from './home-advent';
 import { homeRowCard } from './home-row-card';
@@ -19,7 +19,7 @@ import { isDesktopLayout } from './layout';
 import { getAllWatchlistItems, subscribeWatchlist } from './watchlist';
 import { HomeLibraryVisibility, homeLibraryExcludedClass } from './home-library-visibility';
 
-type RenderedRow = { row: Pick<HomeCollectionRow, 'id' | 'placement'>; element: HTMLElement; reconcileSource: () => Promise<void>; dispose?: () => void };
+type RenderedRow = { row: Pick<HomeCollectionRow, 'id' | 'placement'>; element: HTMLElement; reconcileSource: () => Promise<void>; identity?: string; dispose?: () => void };
 type StagedRows = { revision: number; inputRevision: number; sourceRevision?: number; sections?: RenderedRow[]; error?: HTMLElement; retry?: boolean };
 type CollectionItems = { promise: Promise<Item[]>; fingerprint?: string; value?: Item[] };
 type HomeSnapshot = { key: string; collections?: Item[]; items: Map<string, { value: Item[]; fingerprint: string }>; sources: Map<string, string>; watchlistShown: Map<string, number>; watchlist?: { value: Item[]; fingerprint: string } };
@@ -81,6 +81,12 @@ export class HomeCollections {
   private observer: MutationObserver;
   private placementStyle = el('div').style;
   private disposed = false;
+  private suspended = false;
+  private pendingRender = false;
+  private visit = 0;
+  private attachFrame?: number;
+  private resumeAppearance = false;
+  private nativeContent: { element: HTMLElement; populated: boolean }[] = [];
   private revision = 0;
   private inputRevision = 0;
   private renderRetry = false;
@@ -196,15 +202,68 @@ export class HomeCollections {
           return structural(record.oldValue || '') !== structural(target.getAttribute('class') || '');
         }
         return true;
-      })) this.attach();
+      })) this.queueAttach();
     });
-    this.observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeOldValue: true,
-      attributeFilter: ['class', 'hidden', 'style', 'aria-busy'] });
+    this.observe();
     this.attach(); void this.render(); void this.refreshLibraryExclusions(true);
     if (this.store.synced || this.providerStore.synced || this.api.getWatchlist || this.api.getHomeLibraryExclusions) {
       this.syncTimer = window.setInterval(this.onVisible, 60_000);
     }
     if (!this.warmReturn && (this.store.synced || this.providerStore.synced)) void this.loadInitialSettings();
+  }
+
+  private observe(): void {
+    this.observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeOldValue: true,
+      attributeFilter: ['class', 'hidden', 'style', 'aria-busy'] });
+  }
+  private queueAttach(): void {
+    if (this.disposed || this.suspended || this.attachFrame !== undefined) return;
+    this.attachFrame = requestAnimationFrame(() => { this.attachFrame = undefined; this.attach(); });
+  }
+
+  /** Native Jellyfin keeps Home mounted behind other routes. Retain the same
+   * bounded set of cards and decoded artwork, but do no Home work off-route. */
+  suspend(): void {
+    if (this.disposed || this.suspended) return;
+    this.rememberPosition(); this.rememberNativeFocus();
+    this.suspended = true; this.observer.disconnect(); this.channelArtwork.suspend();
+    this.sections.forEach(section => suspendSeasonalRow(section.element));
+    window.clearInterval(this.syncTimer); window.clearTimeout(this.seasonalTimer); window.clearTimeout(this.refreshTimer);
+    for (const frame of [this.attachFrame, this.restoreFrame, this.captureFrame, this.refreshFrame]) if (frame !== undefined) cancelAnimationFrame(frame);
+    this.attachFrame = this.restoreFrame = this.captureFrame = this.refreshFrame = this.refreshTimer = undefined;
+    this.releaseInitialHome();
+  }
+
+  resume(): void {
+    if (this.disposed || !this.suspended) return;
+    this.suspended = false; this.warmReturn = true; this.inputRevision = 0; this.visit++;
+    this.positionToRestore = this.nativePositionToRestore = this.lastPosition;
+    this.initialRefreshPending = true; this.providerRefreshPending = true;
+    this.resumeAppearance = true; this.shuffledOrders.clear();
+    const host = document.querySelector<HTMLElement>('#indexPage #homeTab, #homeTab');
+    const available = ({ element, populated }: { element: HTMLElement; populated: boolean }): boolean => {
+      if (!host?.contains(element) || populated && !element.childElementCount) return false;
+      for (let node: HTMLElement | null = element; node && node !== host; node = node.parentElement) {
+        if (node.hidden || node.classList.contains('hide') || node.style.display === 'none') return false;
+      }
+      return true;
+    };
+    // A populated cached native Home can refresh its progress in place. Only
+    // an actual native rebuild needs the first-load visibility/readiness gate.
+    const rebuilt = !this.initialPaint || !this.root.isConnected || this.root.parentElement !== host
+      || this.nativeContent.some(entry => !available(entry));
+    if (rebuilt) {
+      this.initialPaint = false; this.readiness.destroy(); this.readiness = new HomeReadiness(() => this.attach());
+      this.staged ||= { revision: this.revision, inputRevision: 0, sections: this.sections };
+    }
+    this.observe(); this.channelArtwork.resume();
+    const rows = activeHomeRows(this.settings);
+    if (this.pendingRender || JSON.stringify(rows.map(row => row.id)) !== this.activeRowIds || rows.some(row => row.shuffle && !dailyAdvent(row))) void this.render();
+    else this.scheduleSeasonCheck();
+    this.attach();
+    if (this.store.synced || this.providerStore.synced || this.api.getWatchlist || this.api.getHomeLibraryExclusions) {
+      this.syncTimer = window.setInterval(this.onVisible, 60_000);
+    }
   }
 
   private refreshAfterPaint(): void {
@@ -215,10 +274,10 @@ export class HomeCollections {
       this.refreshFrame = undefined;
       this.refreshTimer = window.setTimeout(() => {
         this.refreshTimer = undefined;
-        if (this.disposed) return;
+        if (this.disposed || this.suspended) return;
         this.initialRefreshPending = false;
         void this.loadInitialSettings();
-      }, 0);
+      }, 100);
     });
   }
 
@@ -231,11 +290,11 @@ export class HomeCollections {
     this.syncing = this.store.synced; this.providerSyncing = readProviders;
     this.lastSync = this.providerLastSync = Date.now();
     await Promise.all([
-      this.store.synced ? this.store.load().then(settings => {
+      this.store.load().then(settings => {
         if (this.disposed) return;
         const changed = JSON.stringify(settings) !== JSON.stringify(this.settings); this.settings = settings;
         if (changed) void this.render();
-      }).catch(() => {}).finally(() => { this.syncing = false; }) : Promise.resolve(),
+      }).catch(() => {}).finally(() => { this.syncing = false; }),
       readProviders ? this.providerStore.load().then(settings => {
         if (this.disposed) return;
         const changed = JSON.stringify(settings) !== JSON.stringify(this.providers); this.providers = settings;
@@ -244,7 +303,8 @@ export class HomeCollections {
         this.providerSyncing = false;
         if (this.providerRefreshPending) return this.refreshProviders(true);
       }) : Promise.resolve(),
-      this.warmReturn ? this.refreshCollectionData().then(changed => { if (changed && !this.disposed) void this.render(); }) : Promise.resolve()
+      this.warmReturn ? this.refreshCollectionData().then(changed => { if (changed && !this.disposed) void this.render(); }) : Promise.resolve(),
+      this.warmReturn ? this.refreshLibraryExclusions(true) : Promise.resolve()
     ]);
     if (this.disposed) return;
     this.initialSettingsReady = true; this.attach();
@@ -274,6 +334,7 @@ export class HomeCollections {
   }
 
   private rememberNativeFocus = (): void => {
+    if (this.suspended) return;
     const host = document.querySelector<HTMLElement>('#indexPage #homeTab, #homeTab');
     const active = document.activeElement;
     if (host && active instanceof HTMLElement && host.contains(active)
@@ -294,7 +355,7 @@ export class HomeCollections {
   private rememberPosition = (): void => {
     if (this.captureFrame !== undefined) { cancelAnimationFrame(this.captureFrame); this.captureFrame = undefined; }
     const host = this.root.parentElement;
-    if (this.disposed || !this.initialPaint || !host || !/^#\/?home(?:\/?\?|\/?$)/i.test(location.hash)
+    if (this.disposed || this.suspended || !this.initialPaint || !host || !/^#\/?home(?:\/?\?|\/?$)/i.test(location.hash)
       || JSON.stringify([this.api.serverId, this.api.userId]) !== this.accountIdentity
       || this.api.homeCollections && !this.api.homeCollections.isCurrent() || this.api.providerHomes && !this.api.providerHomes.isCurrent()
       || host.closest('.hide,[hidden]') || !host.getClientRects().length || getComputedStyle(host).visibility === 'hidden') return;
@@ -357,10 +418,12 @@ export class HomeCollections {
     });
   }
   private queuePositionCapture = (): void => {
+    if (this.suspended) return;
     if (this.captureFrame !== undefined) return;
     this.captureFrame = requestAnimationFrame(() => { this.captureFrame = undefined; this.rememberPosition(); });
   };
   private onNativeShow = (event: Event): void => {
+    if (this.suspended) return;
     const host = this.root.parentElement, page = event.target;
     if (!host || !(page instanceof HTMLElement) || !page.contains(host)) return;
     if (showingHome(host)) void this.refreshSettings(true);
@@ -370,7 +433,7 @@ export class HomeCollections {
     // Restore once after that native step; real input always takes priority.
     if (!this.inputRevision && showingHome(host)) { this.positionToRestore = saved; this.restorePosition(host); }
   };
-  private onWheel = (): void => { this.inputRevision++; this.positionToRestore = undefined; };
+  private onWheel = (): void => { if (this.suspended) return; this.inputRevision++; this.positionToRestore = undefined; };
 
   private onVisible = (event?: Event): void => {
     // Returning to an open Home must not be skipped by the polling throttle.
@@ -384,6 +447,7 @@ export class HomeCollections {
     if (account && account.serverId === this.api.serverId && account.userId === this.api.userId) void this.refreshProviders(true);
   };
   private async refreshProviders(force: boolean): Promise<void> {
+    if (this.suspended) { this.providerRefreshPending ||= force; return; }
     if (this.initialRefreshPending) { this.providerRefreshPending ||= force; return; }
     if (this.disposed || JSON.stringify([this.api.serverId, this.api.userId]) !== this.accountIdentity
       || !force && (!this.providerStore.synced || Date.now() - this.providerLastSync < 5_000)) return;
@@ -406,6 +470,7 @@ export class HomeCollections {
     if (changed) await this.render();
   }
   async refreshSettings(force = false): Promise<void> {
+    if (this.disposed || this.suspended) return;
     this.refreshSeasons();
     void this.refreshLibraryExclusions(force);
     if (this.initialRefreshPending) { this.providerRefreshPending ||= force; return; }
@@ -435,9 +500,9 @@ export class HomeCollections {
 
   private refreshLibraryExclusions(force = false): Promise<void> {
     if (this.exclusionsRequest) { this.exclusionsRefreshPending ||= force; return this.exclusionsRequest; }
-    if (this.disposed || !this.api.getHomeLibraryExclusions || !force && Date.now() - this.lastExclusionsRead < 5_000) return Promise.resolve();
+    if (this.disposed || this.suspended || !this.api.getHomeLibraryExclusions || !force && Date.now() - this.lastExclusionsRead < 5_000) return Promise.resolve();
     this.lastExclusionsRead = Date.now();
-    const current = () => !this.disposed && JSON.stringify([this.api.serverId, this.api.userId]) === this.accountIdentity
+    const current = () => !this.disposed && !this.suspended && JSON.stringify([this.api.serverId, this.api.userId]) === this.accountIdentity
       && (!this.api.homeCollections || this.api.homeCollections.isCurrent());
     const request = this.api.getHomeLibraryExclusions().then(ids => {
       if (!current()) return;
@@ -457,7 +522,7 @@ export class HomeCollections {
   }
 
   private refreshSeasons = (): void => {
-    if (this.disposed) return;
+    if (this.disposed || this.suspended) return;
     this.sections.forEach(section => refreshSeasonalDate(section.element));
     const ids = JSON.stringify(activeHomeRows(this.settings).map(row => row.id));
     if (ids !== this.activeRowIds) void this.render();
@@ -558,7 +623,7 @@ export class HomeCollections {
     });
     // A user can visit many collection tabs. Revalidating all of them at once
     // saturates the server's connection pool; reserve capacity for navigation.
-    const current = () => !this.disposed && JSON.stringify([this.api.serverId, this.api.userId]) === this.accountIdentity
+    const current = () => !this.disposed && !this.suspended && JSON.stringify([this.api.serverId, this.api.userId]) === this.accountIdentity
       && (!this.api.homeCollections || this.api.homeCollections.isCurrent());
     const refreshNext = async () => {
       while (pending.length && current()) {
@@ -577,7 +642,7 @@ export class HomeCollections {
   }
 
   private attach(): void {
-    if (this.disposed) return;
+    if (this.disposed || this.suspended) return;
     // Membership/visibility/native order may have changed. Between attachments
     // key, focus and scroll events only need the existing scroller references.
     this.positionRowCache = undefined;
@@ -613,7 +678,7 @@ export class HomeCollections {
         if (this.owns(active)) focusRow = active?.closest<HTMLElement>('[data-home-row]')?.dataset.homeRow;
         this.restoreFocus = undefined;
         const positions = new Map(this.sections.map(section => [section.row.id, section.element.querySelector<HTMLElement>('.tvl-home-row-cards')?.scrollLeft || 0]));
-        this.sections.forEach(section => { if (!staged.sections!.includes(section)) section.dispose?.(); section.element.remove(); });
+        this.sections.forEach(section => { if (!staged.sections!.includes(section)) { section.dispose?.(); section.element.remove(); } });
         this.sections = staged.sections; this.displayedRevision = staged.revision;
         this.renderRetry = !!staged.retry;
         for (const section of this.sections) {
@@ -656,11 +721,15 @@ export class HomeCollections {
       if (cards?.dataset.restoreScroll !== undefined) { cards.scrollLeft = Number(cards.dataset.restoreScroll); delete cards.dataset.restoreScroll; }
     }
     this.positionRows(host, anchors);
+    if (showingHome(host)) this.nativeContent = Array.from(host.querySelectorAll<HTMLElement>('.sections .itemsContainer, .homeSectionsContainer .itemsContainer, .homeLibraryButton, .sections .centerMessage'))
+      .filter(element => !element.closest('.tvl-home-collection-row,.tvl-home-provider-row,.hide,[hidden]'))
+      .map(element => ({ element, populated: element.childElementCount > 0 }));
     // Commit and position every owned row before revealing either row family.
     // Readiness has a bounded fallback, so an unavailable source cannot trap Home.
     const firstPaint = !this.initialPaint;
     this.initialPaint = true; this.releaseInitialHome();
-    if (focusId || focusRow) {
+    if ((focusId || focusRow) && !(document.activeElement instanceof HTMLElement && document.activeElement.isConnected
+      && this.owns(document.activeElement) && document.activeElement.dataset.focusId === focusId)) {
       const target = this.sections.flatMap(section => Array.from(section.element.querySelectorAll<HTMLElement>('[data-focus-id]'))).find(node => node.dataset.focusId === focusId);
       const retainedRow = this.sections.find(section => section.row.id === focusRow)?.element;
       const nearby = Array.from(host.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], [tabindex="0"]'))
@@ -680,6 +749,10 @@ export class HomeCollections {
       (target || first)?.focus({ preventScroll: true });
     }
     this.restorePosition(host);
+    if (this.resumeAppearance && showingHome(host)) {
+      this.resumeAppearance = false;
+      this.sections.forEach(section => { resumeSeasonalRow(section.element); refreshSeasonalDate(section.element); });
+    }
     this.refreshAfterPaint();
   }
 
@@ -760,6 +833,7 @@ export class HomeCollections {
     return !!next;
   }
   private onKey = (event: KeyboardEvent): void => {
+    if (this.suspended) return;
     this.inputRevision++;
     const direction: Record<string, string> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
     // Arrow, focus and scroll events share one snapshot per frame. Activation,
@@ -770,6 +844,7 @@ export class HomeCollections {
     if (direction[event.key] && this.move(direction[event.key])) { event.preventDefault(); event.stopImmediatePropagation(); }
   };
   private onCommand = (event: Event): void => {
+    if (this.suspended) return;
     this.inputRevision++;
     const command = (event as CustomEvent).detail?.command?.toLowerCase();
     if (['left', 'right', 'up', 'down'].includes(command)) this.queuePositionCapture(); else this.rememberPosition();
@@ -778,7 +853,7 @@ export class HomeCollections {
       event.preventDefault(); event.stopImmediatePropagation(); (document.activeElement as HTMLElement).click();
     }
   };
-  private onPointer = (): void => { this.rememberPosition(); this.inputRevision++; };
+  private onPointer = (): void => { if (this.suspended) return; this.rememberPosition(); this.inputRevision++; };
   private current(revision: number): boolean { return !this.disposed && (revision === this.revision || revision === this.displayedRevision); }
   private removeInactiveRows(rows: HomeCollectionRow[]): void {
     const ids = new Set(rows.map(row => row.id));
@@ -796,6 +871,9 @@ export class HomeCollections {
     if (next) this.focus(next);
   }
   private async render(refreshList = false): Promise<void> {
+    if (this.disposed) return;
+    if (this.suspended) { this.pendingRender = true; return; }
+    this.pendingRender = false;
     const revision = ++this.revision;
     const rows = activeHomeRows(this.settings);
     this.activeRowIds = JSON.stringify(rows.map(row => row.id));
@@ -803,15 +881,22 @@ export class HomeCollections {
     const inputRevision = this.inputRevision;
     this.staged = undefined;
     this.removeInactiveRows(rows);
-    const providerElement = this.openProvider ? providerHomeRow(this.providers, this.openProvider) : null;
-    const providerRows: RenderedRow[] = providerElement ? [{ row: { id: 'provider-homes:brands', placement: this.providers.placement },
-      element: providerElement, reconcileSource: async () => {} }] : [];
+    const providerIdentity = JSON.stringify(this.providers);
+    const existingProvider = this.sections.find(section => section.row.id === 'provider-homes:brands' && section.identity === providerIdentity);
+    const providerElement = !existingProvider && this.openProvider ? providerHomeRow(this.providers, this.openProvider) : null;
+    const providerRows: RenderedRow[] = existingProvider ? [existingProvider] : providerElement ? [{ row: { id: 'provider-homes:brands', placement: this.providers.placement },
+      element: providerElement, identity: providerIdentity, reconcileSource: async () => {} }] : [];
     if (!rows.length) { this.staged = { revision, inputRevision, sections: providerRows }; this.attach(); return; }
     try {
       const available = new Map((rows.some(row => row.kind !== 'watchlist') ? await this.collectionList(refreshList) : []).map(item => [item.Id, item]));
       if (this.disposed || revision !== this.revision) return;
-      const rendered = await Promise.all(rows.map(row => this.section(row, available, revision)));
+      if (this.suspended) { this.pendingRender = true; return; }
+      const rendered = await Promise.all(rows.map(row => {
+        const identity = this.rowIdentity(row, available);
+        return this.sections.find(section => section.row.id === row.id && section.identity === identity) || this.section(row, available, revision);
+      }));
       if (this.disposed || revision !== this.revision) return;
+      if (this.suspended) { this.pendingRender = true; return; }
       this.staged = { revision, inputRevision, sections: [...providerRows, ...rendered.filter((row): row is RenderedRow => row !== null)] }; this.attach();
     } catch {
       if (this.disposed || revision !== this.revision) return;
@@ -823,7 +908,21 @@ export class HomeCollections {
     }
   }
 
+  private rowIdentity(row: HomeCollectionRow, available: Map<string, Item>): string {
+    return JSON.stringify([row, row.shuffle && !dailyAdvent(row) ? this.visit : 0,
+      row.collectionIds.map(id => available.get(id)),
+      row.kind === 'watchlist' ? this.watchlist?.fingerprint : row.kind === 'items'
+        ? homeCollectionTabs(row).map(tab => [available.get(tab.collectionId), this.items.get(tab.collectionId)?.fingerprint]) : null]);
+  }
+
   private async section(row: HomeCollectionRow, available: Map<string, Item>, revision: number): Promise<RenderedRow | null> {
+    let alive = true;
+    let rendered: RenderedRow | undefined;
+    // Reused rows keep their own handlers across unrelated render revisions.
+    const current = () => {
+      if (this.suspended) { this.pendingRender = true; if (rendered) rendered.identity = undefined; return false; }
+      return alive && !this.disposed && (this.current(revision) || this.sections.some(row => row.element === section));
+    };
     const chosen = row.collectionIds.map(id => available.get(id)).filter((item): item is Item => !!item);
     const title = row.title || (row.kind === 'watchlist' ? 'Watchlist' : row.kind === 'collections' ? 'Collections' : chosen[0]?.Name || 'Collection');
     const section = el('section', 'verticalSection tvl-home-collection-row');section.dataset.homeRow = row.id;
@@ -848,7 +947,7 @@ export class HomeCollections {
     const panel = el('div');
     if (tabbed) {
       strip = homeRowTabs(tabs.map(tab => ({ id: tab.id, label: homeTabLabel(tab, available.get(tab.collectionId)) })), selected.id, id => {
-        const tab = tabs.find(tab => tab.id === id); if (!tab || !this.current(revision)) return;
+        const tab = tabs.find(tab => tab.id === id); if (!tab || !current()) return;
         this.selectedSources.set(row.id, id); this.sourceRevision++;
         selected = tab;
         strip!.querySelectorAll<HTMLElement>('[data-source-tab]').forEach(control => {
@@ -873,7 +972,7 @@ export class HomeCollections {
       cards.append(el('p', 'tvl-home-row-status', row.kind === 'watchlist' ? 'Loading Watchlist…' : 'Loading collection…'));
       try {
         const ordered = row.kind === 'watchlist' ? orderHomeItems(await this.watchlistItems(), row) : row.kind === 'items' ? orderHomeItems(await this.collectionItems(collection!.Id), source) : chosen;
-        if (!this.current(revision) || currentSource !== sourceRevision) return;
+        if (!current() || currentSource !== sourceRevision) return;
         const items = this.displayItems(ordered, row, row.kind === 'items' ? source.collectionId : row.kind);
         replace(cards);
         let shown = 0;
@@ -913,7 +1012,7 @@ export class HomeCollections {
           cards.append(full);
         }
       } catch {
-        if (!this.current(revision) || currentSource !== sourceRevision) return;
+        if (!current() || currentSource !== sourceRevision) return;
         // Home only shows Watchlist when it has cards. The editor retains its
         // empty/error feedback; regular background refreshes retry this source.
         if (row.kind === 'watchlist') { replace(cards); return; }
@@ -922,19 +1021,23 @@ export class HomeCollections {
           const inputRevision = this.inputRevision;
           const pending = renderItems(), retrySource = sourceRevision;
           void pending.then(() => {
-            if (focused && this.current(revision) && retrySource === sourceRevision && inputRevision === this.inputRevision && document.activeElement === document.body)
+            if (focused && current() && retrySource === sourceRevision && inputRevision === this.inputRevision && document.activeElement === document.body)
               this.focus(cards.querySelector<HTMLElement>('button') || strip?.querySelector<HTMLElement>('[aria-selected="true"]') || undefined);
           });
         }));
       } finally {
-        if (this.current(revision) && currentSource === sourceRevision) cards.removeAttribute('aria-busy');
+        if (current() && currentSource === sourceRevision) {
+          cards.removeAttribute('aria-busy');
+          if (rendered) rendered.identity = this.rowIdentity(row, available);
+        }
       }
     };
     // A newly added source must not block the already-loaded rows on return.
     const pending = renderItems();
     if (!this.warmReturn || this.initialPaint || row.kind !== 'items' || this.items.get(selected.collectionId)?.value) await pending;
     if (row.kind === 'watchlist' && !cards.querySelector('.tvl-home-row-card')) return null;
-    return { row, element: section, dispose: decorateSeasonalRow(section, cards, row), reconcileSource: async () => {
+    const dispose = decorateSeasonalRow(section, cards, row);
+    rendered = { row, element: section, identity: this.rowIdentity(row, available), dispose: () => { alive = false; dispose(); }, reconcileSource: async () => {
       const source = tabs.find(tab => tab.id === this.selectedSources.get(row.id)) || tabs[0];
       if (source.id === selected.id) return;
       selected = source;
@@ -943,6 +1046,7 @@ export class HomeCollections {
       });
       await renderItems();
     } };
+    return rendered;
   }
 
   destroy(): void {
@@ -974,6 +1078,7 @@ export class HomeCollections {
     window.removeEventListener('scroll', this.queuePositionCapture, true); window.removeEventListener('click', this.rememberPosition, true);
     window.removeEventListener('wheel', this.onWheel, true); if (this.restoreFrame !== undefined) cancelAnimationFrame(this.restoreFrame);
     if (this.captureFrame !== undefined) cancelAnimationFrame(this.captureFrame);
+    if (this.attachFrame !== undefined) cancelAnimationFrame(this.attachFrame);
     if (this.refreshFrame !== undefined) cancelAnimationFrame(this.refreshFrame);
     window.clearTimeout(this.refreshTimer);
     this.sections.forEach(section => { section.dispose?.(); section.element.remove(); }); this.sections = []; this.root.remove();

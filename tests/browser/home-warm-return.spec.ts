@@ -78,7 +78,7 @@ async function release(page: Page) {
   await page.evaluate(() => { const state=(window as any).__warmHome; state.releaseSettings(); state.releaseMembers(); });
 }
 
-test('Back rebuilds cached rows immediately while both account settings and membership refresh are held', async ({ page }) => {
+test('Back reuses cached rows immediately while both account settings and membership refresh are held', async ({ page }) => {
   await fixture(page); const saved = await holdAndLeave(page);
   expect(saved.vertical).toBeGreaterThan(500); expect(saved.horizontal).toBeGreaterThan(1500);
   await returnHome(page); await expectWarm(page);
@@ -284,7 +284,8 @@ test('warm membership refresh waits for paint, uses two requests at a time and c
   await page.goBack();
   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())))));
   expect(await page.evaluate(()=>(window as any).__warmPool.started)).toEqual([]);
-  await expect(rows.first()).toBeHidden();
+  // Populated native rows can refresh without hiding the retained Home.
+  await expect(rows.first()).toBeVisible();
   await page.evaluate(()=>document.querySelector('#homeTab .sections .itemsContainer')!.removeAttribute('aria-busy'));
   await expect(rows.first()).toBeVisible();await expect(rows.locator('.tvl-home-row-card')).toHaveCount(8);
   await expect.poll(()=>page.evaluate(()=>(window as any).__warmPool.pending.length)).toBe(2);

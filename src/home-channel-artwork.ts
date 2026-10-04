@@ -1,7 +1,7 @@
 import type { Item, MediaApi } from './types';
 
 type ChannelCache = { key: string; expires: number; request: Promise<Map<string, Item>> };
-type Artwork = { channelId: string; image: HTMLImageElement };
+type Artwork = { channelId: string; image: HTMLImageElement; pending?: () => void };
 let channels: ChannelCache | undefined;
 const identity = (id: string) => /^[\da-f]{32}$|^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(id) ? id.replace(/-/g, '').toLowerCase() : id;
 export function clearHomeChannelArtwork(): void { channels = undefined; }
@@ -29,6 +29,7 @@ export class HomeChannelArtwork {
   private observer: MutationObserver;
   private frame?: number;
   private disposed = false;
+  private suspended = false;
   private requested = false;
   private cacheExpires = 0;
   private retryTimer?: number;
@@ -40,13 +41,17 @@ export class HomeChannelArtwork {
       if (records.some(record => record.type === 'childList'
         || (record.target as Element).matches('.card, .cardImageContainer, .cardImageContainer img:not(.tvl-home-channel-logo)'))) this.schedule();
     });
-    this.observer.observe(document.body, { childList: true, subtree: true, attributes: true,
-      attributeFilter: ['style', 'data-src', 'src', 'data-channelid', 'data-id', 'data-type'] });
+    this.observe();
     this.schedule();
   }
 
+  private observe(): void {
+    this.observer.observe(document.body, { childList: true, subtree: true, attributes: true,
+      attributeFilter: ['style', 'data-src', 'src', 'data-channelid', 'data-id', 'data-type'] });
+  }
+
   private schedule(): void {
-    if (this.disposed || this.frame !== undefined) return;
+    if (this.disposed || this.suspended || this.frame !== undefined) return;
     this.frame = requestAnimationFrame(() => { this.frame = undefined; this.update(); });
   }
 
@@ -56,7 +61,7 @@ export class HomeChannelArtwork {
   }
 
   private update(): void {
-    if (this.disposed) return;
+    if (this.disposed || this.suspended) return;
     window.clearTimeout(this.retryTimer); this.retryTimer = undefined;
     const host = document.querySelector('#indexPage #homeTab, #homeTab');
     const missing = new Map<HTMLElement, string>();
@@ -77,6 +82,7 @@ export class HomeChannelArtwork {
         void cached.request.then(items => {
           if (this.disposed) return;
           this.lookup = items; this.cacheExpires = cached.expires; this.requested = false;
+          if (this.suspended) return;
           for (const [art, state] of this.artwork) if (!state.image.isConnected) this.remove(art);
           this.schedule();
         });
@@ -99,18 +105,24 @@ export class HomeChannelArtwork {
       const current = () => {
         const card = art.closest<HTMLElement>('.card');
         const id = card?.dataset.type === 'TvChannel' ? card.dataset.id : card?.dataset.type === 'Program' ? card.dataset.channelid : undefined;
-        return !this.disposed && this.artwork.get(art) === state && art.isConnected && !!id && identity(id) === channelId && !nativeImage(art);
+        return !this.disposed && !this.suspended && this.artwork.get(art) === state && art.isConnected && !!id && identity(id) === channelId && !nativeImage(art);
       };
-      image.addEventListener('load', () => {
+      const loaded = () => {
+        if (this.disposed) return;
+        if (this.suspended) { state.pending = loaded; return; }
         if (!current()) { this.schedule(); return; }
         image.hidden = false; art.classList.add('tvl-home-channel-fallback');
-      });
-      image.addEventListener('error', () => {
+      };
+      const failed = () => {
+        if (this.disposed) return;
+        if (this.suspended) { state.pending = failed; return; }
         if (!current()) return;
         const next = urls.shift();
         if (next) image.src = next;
         else { image.remove(); art.classList.remove('tvl-home-channel-fallback'); }
-      });
+      };
+      image.addEventListener('load', loaded);
+      image.addEventListener('error', failed);
       image.src = urls.shift()!; art.append(image);
     }
     // Retry unresolved channels after the shared cache expires, including a
@@ -120,10 +132,25 @@ export class HomeChannelArtwork {
     }
   }
 
+  /** Stop off-route observation without discarding decoded channel logos. */
+  suspend(): void {
+    if (this.disposed || this.suspended) return;
+    this.suspended = true; this.observer.disconnect();
+    window.clearTimeout(this.retryTimer); this.retryTimer = undefined;
+    if (this.frame !== undefined) { cancelAnimationFrame(this.frame); this.frame = undefined; }
+  }
+
+  resume(): void {
+    if (this.disposed || !this.suspended) return;
+    this.suspended = false; this.observe();
+    for (const state of this.artwork.values()) {
+      const pending = state.pending; state.pending = undefined; pending?.();
+    }
+    this.schedule();
+  }
+
   destroy(): void {
-    this.disposed = true; this.observer.disconnect();
-    window.clearTimeout(this.retryTimer);
-    if (this.frame !== undefined) cancelAnimationFrame(this.frame);
+    this.suspend(); this.disposed = true;
     for (const art of this.artwork.keys()) this.remove(art);
   }
 }

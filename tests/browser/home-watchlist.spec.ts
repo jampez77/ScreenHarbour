@@ -128,14 +128,26 @@ test('Home retrieves all Watchlist pages and lets the remote reach cards past th
   await expect(more).toHaveCount(0);
   await page.evaluate(() => {
     const api = window.TvItemLayoutDemo!.api, original = api.getCollectionList;
-    api.getCollectionList = async () => { const items = await original(); await new Promise<void>(resolve => { (window as any).__finishHomeCollectionRead = resolve; }); return items; };
+    api.getCollectionList = async () => {
+      const items = await original();
+      await new Promise<void>(resolve => { (window as any).__finishHomeCollectionRead = resolve; });
+      (window as any).__homeCollectionReadFinished = true; return items;
+    };
   });
   await homeRow(page).getByRole('button', { name: 'After the Tide', exact: true }).click();
   await expect(page).toHaveURL(/#\/details\?id=movie-tide/); await page.keyboard.press('Escape');
   await expect(homeRow(page).locator('.tvl-home-row-card')).toHaveCount(105);
   await expect.poll(() => page.evaluate(() => typeof (window as any).__finishHomeCollectionRead)).toBe('function');
-  await homeRow(page).evaluate(node => { (window as any).__beforeHomeRefresh = node; (window as any).__finishHomeCollectionRead(); });
-  await expect.poll(() => page.evaluate(() => !(window as any).__beforeHomeRefresh.isConnected)).toBe(true);
+  await homeRow(page).evaluate(node => {
+    (window as any).__beforeHomeRefresh = node;
+    (window as any).__beforeHomeRefreshCard = document.activeElement;
+    (window as any).__finishHomeCollectionRead();
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).__homeCollectionReadFinished)).toBe(true);
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  // Unchanged background data must retain the expanded Watchlist and controls.
+  expect(await homeRow(page).evaluate(node => node === (window as any).__beforeHomeRefresh && node.isConnected
+    && document.activeElement === (window as any).__beforeHomeRefreshCard)).toBe(true);
   await expect(homeRow(page).locator('.tvl-home-row-card')).toHaveCount(105);
   await expect(homeRow(page).getByRole('button', { name: 'After the Tide', exact: true })).toBeFocused();
 });
