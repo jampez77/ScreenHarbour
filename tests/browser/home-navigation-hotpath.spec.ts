@@ -130,11 +130,18 @@ test('temporary smooth-scroll overrides do not reconcile Home while real placeme
   const measured = await page.evaluate(async () => {
     const host = document.querySelector<HTMLElement>('#homeTab')!;
     const scroller = host.querySelector<HTMLElement>('.homeSectionsContainer')!;
+    // Mutation delivery queues reconciliation for the next frame. The first
+    // RAF may resume this test before that queued callback, so let both the
+    // mutation batch and its scheduled layout work complete at each boundary.
+    const settle = async () => {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    };
     scroller.style.setProperty('scroll-behavior', 'smooth', 'important');
     scroller.style.setProperty('overflow-y', 'auto');
     scroller.style.setProperty('height', '300px');
     scroller.style.setProperty('--observer-marker', '"semi;colon"');
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    await settle();
     let reconciliations = 0;
     const query = Element.prototype.querySelectorAll;
     Element.prototype.querySelectorAll = function (selector: string) {
@@ -148,15 +155,15 @@ test('temporary smooth-scroll overrides do not reconcile Home while real placeme
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true }));
       scroller.style.setProperty('scroll-behavior', 'smooth', 'important');
     }
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    await settle();
     const temporary = reconciliations;
     scroller.style.setProperty('scroll-behavior', 'auto', 'important');
     scroller.style.setProperty('order', '2');
     scroller.style.setProperty('scroll-behavior', 'smooth', 'important');
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    await settle();
     const order = reconciliations;
     scroller.style.setProperty('display', 'none');
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    await settle();
     const display = reconciliations;
     Element.prototype.querySelectorAll = query;
     return { temporary, order, display, behavior: scroller.style.getPropertyValue('scroll-behavior'),

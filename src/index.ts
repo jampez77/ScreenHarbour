@@ -60,6 +60,7 @@ const sheet=document.createElement('style');sheet.dataset.tvItemLayout='';sheet.
 let view:DetailView|GuideView|CollectionView|LibraryView|BrowseView|ProviderHomeView|ProviderSettingsEditor|LoadingSettingsEditor|null=null;
 let providerPreview:ProviderData|undefined;
 let homeCollections:HomeCollections|null=null;
+let homeSessionCurrent:(()=>boolean)|undefined;
 let activeKey='';let openedHash='';let dismissed='';let previousFocus:HTMLElement|null=null;
 let timer:number|undefined;
 let disposed=false;
@@ -90,15 +91,18 @@ const nativePages='.itemDetailPage, #itemDetailPage, .liveTvPage, #liveTvSuggest
 type CollectionRoute = {kind:'collections';parentId?:string;scope:'list'|'boxsets'|'movies';verifyParent?:boolean};
 type BrowseRoute = ({kind:'home'}|{kind:'music'}|{kind:'recordings'}) & {parentId?:string;tab?:BrowseTab;scope?:'list'|'livetv'|'playlists'};
 type Route = {kind:'loading-settings'}|{kind:'detail';id:string}|{kind:'guide'}|{kind:'provider';provider:ProviderId;rowId?:string}|{kind:'provider-settings';providerId?:ProviderId}|{kind:'movies';parentId?:string;tab:LibraryTab}|{kind:'shows';parentId?:string;tab:LibraryTab}|CollectionRoute|BrowseRoute;
-function close(restore=true):void{
-  homeCollections?.destroy();homeCollections=null;
+function close(restore=true,destroyHome=false):void{
+  // Jellyfin keeps its native Home mounted during detail/playback navigation.
+  // Keep our rows alongside it so Back can reuse their artwork and controls.
+  if(destroyHome){homeCollections?.destroy();homeCollections=null;homeSessionCurrent=undefined;}
+  else homeCollections?.suspend();
   providerPreview?.destroy();providerPreview=undefined;
   stopThemeVideo?.();stopThemeVideo=undefined;
   view?.destroy();view=null;activeKey='';openedHash='';
   nativeHostMask.clear();
   if(document.body.classList.contains('tvl-open'))document.body.classList.remove('tvl-open');
   if(document.body.classList.contains('tvl-home'))document.body.classList.remove('tvl-home');
-  if(restore&&previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
+  if(restore&&previousFocus?.isConnected&&!previousFocus.closest('#homeTab'))previousFocus.focus({preventScroll:true});
 }
 function currentRoute():Route|null{
   const [path,query='']=location.hash.replace(/^#\/?/,'').split('?');
@@ -230,7 +234,7 @@ function updateAccount(api:MediaApi|null):void{
   if(accountScope===scope)return;
   // Dispose first: views save their final state during destruction. Clear that
   // outgoing account's state afterwards, before mounting any new account view.
-  probeRevision++;pendingHash='';close(false);accountScope=scope;dismissed='';previousFocus=null;
+  probeRevision++;pendingHash='';close(false,true);accountScope=scope;dismissed='';previousFocus=null;
   clearHomeSession();
   returnFocus.clear();libraryStates.clear();browseStates.clear();providerStates.clear();
   recordingOrigins.clear();movieCollectionOrigins.clear();detailOrigins.clear();verifiedLibraries.clear();
@@ -250,9 +254,14 @@ function refresh():void{
   nativeUserPages.update(cinema && !!api, scopeOf(api));
   const route=currentRoute();
   if(pendingHash && pendingHash!==location.hash){pendingHash='';probeRevision++;}
-  if(!cinema||!route){dismissed='';pendingHash='';probeRevision++;close(false);return;}
+  if(!cinema||!route){
+    dismissed='';pendingHash='';probeRevision++;
+    // Authentication routes can appear before Jellyfin clears its old client.
+    const authentication=/^#\/?(?:login|selectserver)\/?(?:\?|$)/i.test(location.hash);
+    close(false,!cinema||!api||authentication);return;
+  }
   if(dismissed===location.hash)return;
-  if(!api){close(false);return;}
+  if(!api){close(false,true);return;}
   const scope=scopeOf(api);
   const key=`${scope}:${route.kind}:${location.hash}`;
   if(activeKey===key&&(view||route.kind==='home')){
@@ -350,7 +359,17 @@ function openRoute(route:Route,api:MediaApi,key:string):void{
     // section order, hidden libraries, focus and Featured's carousel lifecycle.
     // Styling alone also works when the native page arrives after this route.
     document.body.classList.add('tvl-home');
-    homeCollections=new HomeCollections(api,id=>navigate(id,api.serverId),focusId,openProvider);return;
+    // A reconnect can replace ApiClient without changing the account IDs.
+    // Never resume an adapter whose authenticated transport is no longer live.
+    if(homeCollections&&homeSessionCurrent&&!homeSessionCurrent()){
+      homeCollections.destroy();homeCollections=null;homeSessionCurrent=undefined;
+    }
+    if(homeCollections)homeCollections.resume();
+    else{
+      homeSessionCurrent=()=> (!api.homeCollections||api.homeCollections.isCurrent())&&(!api.providerHomes||api.providerHomes.isCurrent());
+      homeCollections=new HomeCollections(api,id=>navigate(id,api.serverId),focusId,openProvider);
+    }
+    return;
   }
   hideNativeHost(route);
   document.body.classList.add('tvl-open');
@@ -455,7 +474,10 @@ const refreshNavigation=()=>{window.clearTimeout(timer);refresh();};
 const hide=(event:Event)=>{if(location.hash!==openedHash&&nativeHostMask.owns(event.target))refreshNavigation();};
 const show=(event:Event)=>{
   const target=event.target as HTMLElement;
-  if(target.matches?.(nativePages)){refreshNavigation();void homeCollections?.refreshSettings();}
+  if(target.matches?.(nativePages)){
+    refreshNavigation();
+    if(document.body.classList.contains('tvl-home'))void homeCollections?.refreshSettings();
+  }
 };
 const hashChanged=(event:HashChangeEvent)=>{
   if(dismissed!==location.hash)dismissed='';
@@ -486,5 +508,5 @@ const scopeTimer=window.setInterval(()=>{
   if(scopeOf(api)!==accountScope)refresh();
   else if(!api)interfaceBranding.update(null,isCinemaLayout());
 },1000);
-window.TvItemLayout={refresh,destroy(){disposed=true;probeRevision++;pendingHash='';stopPauseScreen();nativeRecordingsTheme.destroy();profileMenu.destroy();desktopPlayer.destroy();nativeFolderTheme.destroy();nativeLoginTheme.destroy();nativeUserPages.destroy();interfaceBranding.destroy();trailerActions.destroy();channelZapper.destroy();playerBrowser.destroy();playerContext.destroy();close();clearHomeSession();sheet.remove();observer.disconnect();document.body.classList.remove('tvl-layout');window.clearTimeout(timer);window.clearInterval(scopeTimer);window.removeEventListener('hashchange',hashChanged);window.removeEventListener('popstate',refreshNavigation);document.removeEventListener('viewshow',show,true);document.removeEventListener('viewbeforehide',hide,true);document.removeEventListener('tabchange',refreshNavigation,true);}};
+window.TvItemLayout={refresh,destroy(){disposed=true;probeRevision++;pendingHash='';stopPauseScreen();nativeRecordingsTheme.destroy();profileMenu.destroy();desktopPlayer.destroy();nativeFolderTheme.destroy();nativeLoginTheme.destroy();nativeUserPages.destroy();interfaceBranding.destroy();trailerActions.destroy();channelZapper.destroy();playerBrowser.destroy();playerContext.destroy();close(true,true);clearHomeSession();sheet.remove();observer.disconnect();document.body.classList.remove('tvl-layout');window.clearTimeout(timer);window.clearInterval(scopeTimer);window.removeEventListener('hashchange',hashChanged);window.removeEventListener('popstate',refreshNavigation);document.removeEventListener('viewshow',show,true);document.removeEventListener('viewbeforehide',hide,true);document.removeEventListener('tabchange',refreshNavigation,true);}};
 refreshNavigation();

@@ -92,9 +92,10 @@ for (const layout of ['desktop', 'tv']) test(`${layout} Home fills only missing 
   await target.scrollIntoViewIfNeeded();
   await target.focus(); await expect(target).toBeFocused();
   await page.screenshot({ path: info.outputPath(`home-channel-logo-${layout}.png`) });
+  const retainedLogo = await logo(page, 'Missing programme').elementHandle();
   await target.click();
   await expect(page.getByRole('dialog', { name: 'Field Notes details', exact: true })).toBeVisible();
-  await expect(page.locator('#homeTab .tvl-home-channel-logo')).toHaveCount(0);
+  expect(await retainedLogo!.evaluate(node => node.isConnected)).toBe(true);
   await page.keyboard.press('Escape');
   await expect(logo(page, 'Missing programme')).toBeVisible();
   await expect(target).toBeFocused();

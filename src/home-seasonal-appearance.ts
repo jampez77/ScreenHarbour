@@ -11,7 +11,15 @@ import { cancelSeasonalMotion, changeSeasonalExpansion, seasonalHeaderClearance,
 type AdventCard = { row: HomeCollectionRow; index: number; caption: HTMLElement | null; title: string; label: string; opensAt?: number; opensLabel?: string };
 const adventCards = new WeakMap<HTMLElement, AdventCard>();
 const pendingMounts = new WeakMap<HTMLElement, () => void>();
+type SeasonalRowController = { suspended: boolean; suspend(): void; resume(): void };
+const seasonalRows = new WeakMap<HTMLElement, SeasonalRowController>();
 const dateChangeEvent = 'tvl-seasonal-date-change';
+
+/** Cached Home keeps its scenery and open doors while another route is shown. */
+export function suspendSeasonalRow(section: HTMLElement): void { seasonalRows.get(section)?.suspend(); }
+
+/** Restore Home focus before resuming so a retained scene does not close first. */
+export function resumeSeasonalRow(section: HTMLElement): void { seasonalRows.get(section)?.resume(); }
 
 function refreshAdventCard(card: HTMLElement, reveal = false): boolean {
   const data = adventCards.get(card);
@@ -132,7 +140,7 @@ function seasonalPixels(section: HTMLElement, property: string, value: number): 
 
 /** Measure once mounted so expansion reveals a fixed scene instead of stretching it. */
 export function refreshSeasonalBackdrop(section: HTMLElement): void {
-  if (!section.classList.contains('tvl-seasonal-row') || !section.isConnected) return;
+  if (!section.classList.contains('tvl-seasonal-row') || !section.isConnected || seasonalRows.get(section)?.suspended) return;
   const onMount = pendingMounts.get(section);
   if (onMount) { pendingMounts.delete(section); onMount(); }
   const style = getComputedStyle(section);
@@ -165,7 +173,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   section.dataset.seasonalExpansion = appearance.expansion;
   section.dataset.seasonalStyle = appearance.backgroundStyle || 'classic';
   const preview = () => !!section.closest('.tvl-home-preview');
-  let hovered: HTMLElement | null = null, expanded = false, disposed = false;
+  let hovered: HTMLElement | null = null, expanded = false, disposed = false, suspended = false;
   let backdrop: HTMLElement | undefined;
   let scenery: HTMLElement | undefined;
   let backdropObserver: IntersectionObserver | undefined;
@@ -186,14 +194,14 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     section.prepend(backdrop);
   }
   const loadBackground = () => {
-    if (backgroundLoaded || disposed || !section.isConnected) return;
+    if (backgroundLoaded || disposed || suspended || !section.isConnected) return;
     backgroundLoaded = true;
     backdropObserver?.disconnect(); backdropObserver = undefined;
     // Keep the row and its expansion geometry ready from the first paint, but
     // only request/decode its scenery as navigation approaches the row.
     if (scenery) scenery.style.backgroundImage = `url("${seasonalBackground(appearance.theme, appearance.backgroundStyle)}")`;
     if (themedTitle) void applySeasonalTitleFont(themedTitle, appearance.theme, appearance.backgroundStyle).then(() => {
-      if (!disposed && section.isConnected) {
+      if (!disposed && !suspended && section.isConnected) {
         refreshSeasonalBackdrop(section);
         if (expanded && !preview()) settleSeasonalSelection();
       }
@@ -229,6 +237,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     return card && cards.contains(card) ? card : null;
   };
   const onTransition = (event: TransitionEvent) => {
+    if (disposed || suspended) return;
     if (event.propertyName === 'transform' && event.target instanceof Element
       && event.target.matches('.tvl-seasonal-panel,.tvl-seasonal-advent-flap')) {
       const card = item(event.target);
@@ -237,7 +246,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   };
   const openCards = new Set<HTMLElement>();
   const sync = (refreshDates = false) => {
-    if (disposed) return;
+    if (disposed || suspended) return;
     const focused = item(document.activeElement);
     // Remote focus can jump directly into a row before the observer delivers
     // its first callback. Mouse navigation and editor previews work likewise.
@@ -264,6 +273,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     changeSeasonalExpansion(section, active, () => refreshSeasonalBackdrop(section));
   };
   const onFocus = (event: FocusEvent) => {
+    if (disposed || suspended) return;
     hovered = null; cancelAnimationFrame(focusFrame); sync();
     const previous = event.relatedTarget;
     if (preview() || previous instanceof Node && cards.contains(previous)) return;
@@ -275,10 +285,11 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     window.clearTimeout(nativeEntryTimer);
     nativeEntryTimer = window.setTimeout(() => {
       nativeEntryTimer = 0;
-      if (!disposed && section.isConnected && cards.contains(document.activeElement)) settleSeasonalSelection();
+      if (!disposed && !suspended && section.isConnected && cards.contains(document.activeElement)) settleSeasonalSelection();
     }, 350);
   };
   const onBlur = (event: FocusEvent) => {
+    if (disposed || suspended) return;
     hovered = null; cancelAnimationFrame(focusFrame); focusFrame = requestAnimationFrame(() => sync());
     const next = event.relatedTarget;
     if (preview() || !(next instanceof HTMLElement) || cards.contains(next) || next.closest('[data-scroll-mode-y="custom"]')) return;
@@ -288,20 +299,20 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     window.clearTimeout(nativeExitTimer);
     nativeExitTimer = window.setTimeout(() => {
       nativeExitTimer = 0;
-      if (!disposed && section.isConnected && next.isConnected && document.activeElement === next
+      if (!disposed && !suspended && section.isConnected && next.isConnected && document.activeElement === next
         && next.closest('#homeTab') === section.closest('#homeTab')) settleSeasonalSelection();
     }, 350);
   };
   const onPointer = (event: PointerEvent) => {
     // TV focus and touch activation must not leave a synthetic hover open.
-    if (event.pointerType !== 'mouse') return;
+    if (disposed || suspended || event.pointerType !== 'mouse') return;
     hovered = item(event.target); sync();
   };
-  const onLeave = () => { hovered = null; sync(); };
+  const onLeave = () => { if (!disposed && !suspended) { hovered = null; sync(); } };
   const onDateChange = () => sync(true);
   const updateParallax = () => {
     scrollFrame = 0;
-    if (!scenery || !backgroundLoaded || disposed) return;
+    if (!scenery || !backgroundLoaded || disposed || suspended) return;
     const range = cards.scrollWidth - cards.clientWidth;
     const progress = range > 0 ? Math.max(0, Math.min(1, cards.scrollLeft / range)) : .5;
     // A single clipped scenery layer moves instead of repainting a masked
@@ -310,7 +321,7 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
     const transform = `translateX(${offset}%)`;
     if (scenery.style.transform !== transform) scenery.style.transform = transform;
   };
-  const onScroll = () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(updateParallax); };
+  const onScroll = () => { if (!disposed && !suspended && !scrollFrame) scrollFrame = requestAnimationFrame(updateParallax); };
   section.addEventListener('transitionend', onTransition);
   section.addEventListener(dateChangeEvent, onDateChange);
   cards.addEventListener('focusin', onFocus);
@@ -318,39 +329,69 @@ export function decorateSeasonalRow(section: HTMLElement, cards: HTMLElement, ro
   cards.addEventListener('pointerover', onPointer);
   cards.addEventListener('pointerleave', onLeave);
   if (appearance.background === 'parallax') { cards.addEventListener('scroll', onScroll, { passive: true }); onScroll(); }
-  const onResize = () => { cancelSeasonalMotion(); refreshSeasonalBackdrop(section); if (expanded && !preview()) settleSeasonalSelection(); };
+  const onResize = () => {
+    if (disposed || suspended) return;
+    cancelSeasonalMotion(); refreshSeasonalBackdrop(section); if (expanded && !preview()) settleSeasonalSelection();
+  };
   // Home may abandon a prepared row before mounting it. Keep all external
   // subscriptions weak until it is actually mounted, including resize.
-  pendingMounts.set(section, () => {
-      if (disposed) return;
-      window.addEventListener('resize', onResize);
-      if ((!backdrop && !themedTitle) || backgroundLoaded) return;
-      if (preview() || typeof IntersectionObserver !== 'function') loadBackground();
-      else try {
-        backdropObserver = new IntersectionObserver(entries => {
-          if (entries.some(entry => entry.isIntersecting || entry.intersectionRatio > 0)) loadBackground();
-        }, { rootMargin: '300px 0px' });
-        backdropObserver.observe(section);
-      } catch {
-        // Older TV clients must retain their artwork if observation is missing
-        // or fails, rather than waiting forever for an unavailable callback.
-        backdropObserver?.disconnect(); backdropObserver = undefined;
-        loadBackground();
-      }
-  });
+  const observe = () => {
+    if (disposed || suspended || !section.isConnected) return;
+    window.addEventListener('resize', onResize);
+    if ((!backdrop && !themedTitle) || backgroundLoaded || backdropObserver) return;
+    if (preview() || typeof IntersectionObserver !== 'function') loadBackground();
+    else try {
+      const observer = new IntersectionObserver(entries => {
+        if (backdropObserver === observer && entries.some(entry => entry.isIntersecting || entry.intersectionRatio > 0)) loadBackground();
+      }, { rootMargin: '300px 0px' });
+      backdropObserver = observer; observer.observe(section);
+    } catch {
+      // Older TV clients must retain their artwork if observation is missing
+      // or fails, rather than waiting forever for an unavailable callback.
+      backdropObserver?.disconnect(); backdropObserver = undefined;
+      loadBackground();
+    }
+  };
+  const pause = () => {
+    cancelAnimationFrame(scrollFrame); scrollFrame = 0;
+    cancelAnimationFrame(focusFrame); focusFrame = 0;
+    window.clearTimeout(nativeEntryTimer); nativeEntryTimer = 0;
+    window.clearTimeout(nativeExitTimer); nativeExitTimer = 0;
+    cancelSeasonalMotion();
+    backdropObserver?.disconnect(); backdropObserver = undefined;
+    window.removeEventListener('resize', onResize);
+    for (const card of closing.keys()) finishClosing(card);
+  };
+  const controller: SeasonalRowController = {
+    suspended: false,
+    suspend() {
+      if (disposed || suspended) return;
+      suspended = controller.suspended = true;
+      hovered = null;
+      pause();
+    },
+    resume() {
+      if (disposed || !suspended) return;
+      suspended = controller.suspended = false;
+      if (!section.isConnected) { pendingMounts.set(section, observe); return; }
+      observe();
+      refreshSeasonalBackdrop(section);
+      sync(true);
+      if (appearance.background === 'parallax') onScroll();
+      if (expanded && !preview() && cards.contains(document.activeElement)) settleSeasonalSelection();
+    }
+  };
+  seasonalRows.set(section, controller);
+  pendingMounts.set(section, observe);
   refreshSeasonalBackdrop(section);
   sync();
   return () => {
-    disposed = true; cancelAnimationFrame(scrollFrame); cancelAnimationFrame(focusFrame); cancelSeasonalMotion();
-    window.clearTimeout(nativeEntryTimer); window.clearTimeout(nativeExitTimer);
+    disposed = true; pause();
+    seasonalRows.delete(section);
     pendingMounts.delete(section);
-    backdropObserver?.disconnect(); backdropObserver = undefined;
-    for (const timer of closing.values()) window.clearTimeout(timer);
-    closing.clear();
     cards.querySelectorAll('.tvl-seasonal-reveal-active').forEach(card => card.classList.remove('tvl-seasonal-reveal-active'));
     section.removeEventListener('transitionend', onTransition);
     section.removeEventListener(dateChangeEvent, onDateChange);
-    window.removeEventListener('resize', onResize);
     cards.removeEventListener('focusin', onFocus); cards.removeEventListener('focusout', onBlur);
     cards.removeEventListener('pointerover', onPointer); cards.removeEventListener('pointerleave', onLeave);
     cards.removeEventListener('scroll', onScroll);

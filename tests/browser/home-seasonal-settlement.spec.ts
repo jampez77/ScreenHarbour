@@ -261,27 +261,31 @@ test('first fullscreen focus remeasures the space released when the original hea
   expect(audit.errors).toEqual([]);
 });
 
-test('Back followed immediately by Down follows row order while restored expansion is still moving', async ({ page }) => {
+test('Back followed immediately by Down follows row order from the retained fullscreen scene', async ({ page }) => {
   await page.addInitScript(() => {
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (...args: Parameters<typeof animate>) {
       const animation = animate.apply(this, args);
-      // Freeze the real expansion partway through. A fast desktop otherwise
-      // finishes before Back restoration and the next remote event are tested.
+      // Freeze real expansion partway through, including the row transitions
+      // started by Down after Back. Navigation must use final layout geometry.
       if (this.closest('#homeTab')) { animation.pause(); animation.currentTime = 80; }
       return animation;
     };
   });
   const audit = await fixture(page, 'document');
   await cards(page).nth(1).focus();
+  await row(page).evaluate(node => { (window as any).__retainedFullscreenRow = node; });
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'A Kind of Blue details', exact: true })).toBeVisible();
   await page.goBack();
   await expect(cards(page).nth(1)).toBeFocused();
-  await expect.poll(() => page.evaluate(() => document.getAnimations().filter(animation => {
+  await expect(row(page)).toHaveClass(/tvl-seasonal-expanded/);
+  expect(await row(page).evaluate(node => node === (window as any).__retainedFullscreenRow)).toBe(true);
+  // Back retains the final scene instead of replaying its opening animation.
+  expect(await page.evaluate(() => document.getAnimations().filter(animation => {
     const target = (animation.effect as KeyframeEffect | null)?.target;
     return animation.playState === 'paused' && target instanceof Element && !!target.closest('#homeTab');
-  }).length)).toBeGreaterThan(0);
+  }).length)).toBe(0);
   await page.keyboard.press('ArrowDown');
   await expect(cards(page, 'second').nth(1)).toBeFocused();
   await page.keyboard.press('ArrowDown');

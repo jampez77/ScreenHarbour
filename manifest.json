@@ -9,6 +9,30 @@
     "imageUrl": "https://raw.githubusercontent.com/jampez77/ScreenHarbour/main/assets/catalogue/screenharbour.png",
     "versions": [
       {
+        "version": "0.2.51.3",
+        "changelog": "Reuses Home cards and artwork when returning from movie details. Populated native rows refresh without blanking Home, and only changed custom rows are rebuilt. Pauses seasonal work while Home is inactive. Preserves focus, scroll positions, all settings, account isolation, shuffle behavior and seasonal effects. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "12.0.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.51/TvItemLayout_0.2.51.3_jellyfin-12.0.0.zip",
+        "checksum": "2415494ee0dceb4796532a28075c3f9d",
+        "timestamp": "2026-10-04T10:08:45Z"
+      },
+      {
+        "version": "0.2.51.2",
+        "changelog": "Reuses Home cards and artwork when returning from movie details. Populated native rows refresh without blanking Home, and only changed custom rows are rebuilt. Pauses seasonal work while Home is inactive. Preserves focus, scroll positions, all settings, account isolation, shuffle behavior and seasonal effects. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.11.0",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.51/TvItemLayout_0.2.51.2_jellyfin-10.11.0.zip",
+        "checksum": "c1bb60596edef11c76a6d3d915656902",
+        "timestamp": "2026-10-04T10:08:45Z"
+      },
+      {
+        "version": "0.2.51.1",
+        "changelog": "Reuses Home cards and artwork when returning from movie details. Populated native rows refresh without blanking Home, and only changed custom rows are rebuilt. Pauses seasonal work while Home is inactive. Preserves focus, scroll positions, all settings, account isolation, shuffle behavior and seasonal effects. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
+        "targetAbi": "10.10.7",
+        "sourceUrl": "https://github.com/jampez77/ScreenHarbour/releases/download/v0.2.51/TvItemLayout_0.2.51.1_jellyfin-10.10.7.zip",
+        "checksum": "22f4369a001c217ca06162c707b87836",
+        "timestamp": "2026-10-04T10:08:45Z"
+      },
+      {
         "version": "0.2.50.3",
         "changelog": "Fixes seasonal rows bouncing vertically during Left/Right navigation on TV. Uses Jellyfin\u2019s custom-scroll contract so its delayed focus scrolling does not compete with ScreenHarbour\u2019s seasonal-row positioning. Preserves all settings, expansion, themed titles, doors, parallax and lazy-loaded TV artwork. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.",
         "targetAbi": "12.0.0",
