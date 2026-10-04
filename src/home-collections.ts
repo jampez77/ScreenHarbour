@@ -18,6 +18,7 @@ import { providerHomeRow } from './provider-home';
 import { isDesktopLayout } from './layout';
 import { getAllWatchlistItems, subscribeWatchlist } from './watchlist';
 import { HomeLibraryVisibility, homeLibraryExcludedClass } from './home-library-visibility';
+import { restoreHomeItemAnchor, type HomeItemAnchor } from './home-return-position';
 
 type RenderedRow = { row: Pick<HomeCollectionRow, 'id' | 'placement'>; element: HTMLElement; reconcileSource: () => Promise<void>; identity?: string; dispose?: () => void };
 type StagedRows = { revision: number; inputRevision: number; sourceRevision?: number; sections?: RenderedRow[]; error?: HTMLElement; retry?: boolean };
@@ -38,6 +39,7 @@ type HomePosition = {
   vertical: { element: HTMLElement; top: number; left: number }[];
   rows: Map<string, { left: number; position?: number }[]>;
   focusId?: string; nativeFocus?: HTMLElement;
+  anchor?: HomeItemAnchor;
 };
 // Session-only, bounded and account-scoped. Native node references are checked
 // again on return; custom rows are resolved by their stable saved identifiers.
@@ -116,6 +118,8 @@ export class HomeCollections {
   private loadingTimer?: number;
   private restoreFrame?: number;
   private restoreTimer?: number;
+  private returnAnchor?: { home: string; host: HTMLElement; target: HTMLElement; cards: HTMLElement | null; position: HomeItemAnchor;
+    inputRevision: number; width: number; height: number; observer?: ResizeObserver };
   private captureFrame?: number;
   private positionToRestore?: HomePosition;
   private nativePositionToRestore?: HomePosition;
@@ -233,7 +237,7 @@ export class HomeCollections {
     this.suspended = true; this.observer.disconnect(); this.channelArtwork.suspend();
     this.sections.forEach(section => suspendSeasonalRow(section.element));
     window.clearInterval(this.syncTimer); window.clearTimeout(this.seasonalTimer); window.clearTimeout(this.refreshTimer);
-    window.clearTimeout(this.restoreTimer); this.restoreTimer = undefined;
+    this.cancelReturnScroll();
     for (const frame of [this.attachFrame, this.restoreFrame, this.captureFrame, this.refreshFrame]) if (frame !== undefined) cancelAnimationFrame(frame);
     this.attachFrame = this.restoreFrame = this.captureFrame = this.refreshFrame = this.refreshTimer = undefined;
     this.releaseInitialHome();
@@ -288,8 +292,10 @@ export class HomeCollections {
     const token = `${Date.now()}:${++homeItemVisitSequence}`;
     const state = history.state && typeof history.state === 'object' ? history.state : {};
     history.replaceState({ ...state, [homeItemVisitKey]: token }, '', location.href);
+    const rect = card.getBoundingClientRect();
     this.itemReturn = { home: location.hash, token,
-      position: this.lastPosition && { ...this.lastPosition, focusId: card.dataset.focusId, nativeFocus: undefined } };
+      position: this.lastPosition && { ...this.lastPosition, focusId: card.dataset.focusId, nativeFocus: undefined,
+        anchor: { top: rect.top, left: rect.left } } };
     this.navigate(itemId);
   }
 
@@ -448,6 +454,7 @@ export class HomeCollections {
           else node.style.removeProperty('scroll-behavior');
         });
       }
+      if (target && saved.anchor) restoreHomeItemAnchor(target, saved.anchor);
     };
     apply();
     // Repeat after the browser's immediate Back scroll restoration.
@@ -458,6 +465,10 @@ export class HomeCollections {
       if (!this.disposed && !this.suspended && inputRevision === this.inputRevision
         && (document.activeElement === document.body || host.contains(document.activeElement))) apply();
     });
+    if (target && saved.anchor) {
+      this.holdReturnAnchor(host, target, saved.anchor);
+      return;
+    }
     // Jellyfin queues a 270ms scroll for its temporary native focus. Returning
     // focus to a custom scroller does not cancel that animation. Seasonal focus
     // handlers are suspended during restoration, so their entry correction
@@ -486,11 +497,48 @@ export class HomeCollections {
       }
     }, 350);
   }
-  private cancelReturnScroll(): void { window.clearTimeout(this.restoreTimer); this.restoreTimer = undefined; }
+  private holdReturnAnchor(host: HTMLElement, target: HTMLElement, position: HomeItemAnchor): void {
+    this.cancelReturnScroll();
+    const guard = this.returnAnchor = { home: location.hash, host, target, position, cards: target.closest<HTMLElement>('.tvl-home-row-cards'),
+      inputRevision: this.inputRevision, width: window.innerWidth, height: window.innerHeight, observer: undefined as ResizeObserver | undefined };
+    // Native scrolling starts on its first animation frame, which can be late
+    // on a TV. Follow actual scroll/layout events instead of guessing its end
+    // from a wall-clock delay. No work runs on frames without a change.
+    if (typeof ResizeObserver === 'function') {
+      guard.observer = new ResizeObserver(this.queuePositionCapture);
+      guard.observer.observe(host);
+      host.querySelectorAll('.sections,.homeSectionsContainer').forEach(node => guard.observer!.observe(node));
+    }
+    this.restoreTimer = window.setTimeout(() => { this.correctReturnAnchor(); this.cancelReturnScroll(); }, 5_000);
+  }
+  private correctReturnAnchor(): void {
+    const guard = this.returnAnchor;
+    if (!guard || this.disposed || this.suspended) return;
+    if (location.hash !== guard.home) { this.cancelReturnScroll(); return; }
+    if (!showingHome(guard.host)) return;
+    if (window.innerWidth !== guard.width || window.innerHeight !== guard.height) { this.cancelReturnScroll(); return; }
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !guard.host.contains(active)) return;
+    const horizontal = guard.inputRevision === this.inputRevision;
+    if (horizontal) {
+      if (active !== guard.target && (!guard.target.dataset.focusId || active.dataset.focusId !== guard.target.dataset.focusId)) return;
+      guard.target = active; guard.cards = active.closest<HTMLElement>('.tvl-home-row-cards');
+    } else if (!guard.cards || active.closest('.tvl-home-row-cards') !== guard.cards) {
+      this.cancelReturnScroll(); return;
+    }
+    if (active.closest('.hide,[hidden]') || !active.getClientRects().length || getComputedStyle(active).visibility === 'hidden') return;
+    // Left/Right keeps the newly selected item and its horizontal scroll; only
+    // the same row's vertical position remains protected from native movement.
+    restoreHomeItemAnchor(active, guard.position, horizontal);
+  }
+  private cancelReturnScroll(): void {
+    window.clearTimeout(this.restoreTimer); this.restoreTimer = undefined;
+    this.returnAnchor?.observer?.disconnect(); this.returnAnchor = undefined;
+  }
   private queuePositionCapture = (): void => {
     if (this.suspended) return;
     if (this.captureFrame !== undefined) return;
-    this.captureFrame = requestAnimationFrame(() => { this.captureFrame = undefined; this.rememberPosition(); });
+    this.captureFrame = requestAnimationFrame(() => { this.captureFrame = undefined; this.correctReturnAnchor(); this.rememberPosition(); });
   };
   private onNativeShow = (event: Event): void => {
     if (this.suspended) return;
@@ -823,6 +871,7 @@ export class HomeCollections {
       this.resumeAppearance = false;
       this.sections.forEach(section => { resumeSeasonalRow(section.element); refreshSeasonalDate(section.element); });
     }
+    this.correctReturnAnchor();
     this.refreshAfterPaint();
   }
 
@@ -1154,7 +1203,7 @@ export class HomeCollections {
     if (this.attachFrame !== undefined) cancelAnimationFrame(this.attachFrame);
     if (this.refreshFrame !== undefined) cancelAnimationFrame(this.refreshFrame);
     window.clearTimeout(this.refreshTimer);
-    window.clearTimeout(this.restoreTimer);
+    this.cancelReturnScroll();
     this.sections.forEach(section => { section.dispose?.(); section.element.remove(); }); this.sections = []; this.root.remove();
   }
 }

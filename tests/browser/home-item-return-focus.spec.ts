@@ -18,7 +18,20 @@ test.beforeAll(async () => {
     return response.text();
   })();
   expect(createHash('sha256').update(sourceText).digest('hex')).toBe('c89e5d68b4f68883d982549e39adcf4c4c735b8f24f641fd370a2e1f91b175a9');
-  native = (await build({ stdin: { contents: sourceText, resolveDir: source }, bundle: true,
+  // The real animation starts its 270ms clock at its first RAF, not when focus
+  // is restored. Delay only that first frame on demand to model a busy TV while
+  // retaining Jellyfin's actual scrolling and elapsed-time animation logic.
+  const firstFrame = '    scrollTimer = requestAnimationFrame(scrollAnim);\n}';
+  expect(sourceText.split(firstFrame)).toHaveLength(2);
+  const instrumented = sourceText.replace(firstFrame, `    scrollTimer = requestAnimationFrame(timestamp => {
+        if (!window.__delayNativeScroll) { scrollAnim(timestamp); return; }
+        window.__delayNativeScroll = false;
+        const pending = scrollTimer;
+        setTimeout(() => {
+            if (scrollTimer === pending) scrollTimer = requestAnimationFrame(scrollAnim);
+        }, 400);
+    });\n}`);
+  native = (await build({ stdin: { contents: instrumented, resolveDir: source }, bundle: true,
     format: 'iife', target: 'chrome79', write: false, logLevel: 'silent', plugins: [{ name: 'native-scroll-adapters', setup(build) {
       build.onResolve({ filter: /.*/ }, args => ({ path: args.path, namespace: 'fixture' }));
       build.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ loader: 'js', contents: args.path === '../utils/dom'
@@ -140,6 +153,25 @@ for (const expansion of ['none', 'large', 'fullscreen'] as const) for (const scr
     await expect(selected(page, 'before')).not.toBeFocused();
   });
 }
+
+test('Back preserves the exact viewport when the native scroll animation starts after a busy TV frame', async ({ page }) => {
+  await fixture(page, 'none', 'nested');
+  const snapshot = () => selected(page).evaluate(node => ({
+    top: node.getBoundingClientRect().top, left: node.getBoundingClientRect().left,
+    scroll: document.querySelector('.demo-native-home-page')!.scrollTop
+  }));
+  const before = await snapshot();
+  await leave(page);
+  await page.evaluate(() => { (window as any).__delayNativeScroll = true; });
+  await page.goBack();
+  await expect(selected(page)).toBeFocused();
+  await expect.poll(() => page.evaluate(() => (window as any).__itemReturn.queuedNative)).toBe(1);
+  await page.waitForTimeout(1000);
+  const after = await snapshot();
+  expect(Math.abs(after.top - before.top), JSON.stringify({ before, after })).toBeLessThan(2);
+  expect(Math.abs(after.left - before.left), JSON.stringify({ before, after })).toBeLessThan(2);
+  expect(Math.abs(after.scroll - before.scroll), JSON.stringify({ before, after })).toBeLessThan(2);
+});
 
 for (const scrolling of ['document', 'nested'] as const) test(`repeated fullscreen Back remains visible without preventScroll support in ${scrolling}`, async ({ page }) => {
   await fixture(page, 'fullscreen', scrolling, true);
