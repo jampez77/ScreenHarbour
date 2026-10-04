@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { collectionRowsSettingsLink, openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { useDesktopLayout } from './layout-fixture';
 
 const editor = (page: Page) => page.getByRole('dialog', { name: 'Customize Home rows', exact: true });
@@ -9,9 +10,9 @@ async function setup(page: Page, seeded = false) {
   if (seeded) await page.addInitScript(() => localStorage.setItem(`jellyfin-cinema.home-collections.v1:${encodeURIComponent(location.origin)}:demo`, JSON.stringify({ version: 1, rows: [
     { id: 'watchlist', kind: 'watchlist', title: 'Watchlist', collectionIds: [], ranked: false, placement: 'end', itemSort: 'collection', itemOrder: [] }
   ] })));
-  await page.goto('/?featured=0#/list?parentId=library-collections');
+  await page.goto('/?featured=0#/mypreferencesmenu');
   await useDesktopLayout(page);
-  await expect(page.getByRole('button', { name: 'Customize Home rows', exact: true })).toBeVisible();
+  await expect(collectionRowsSettingsLink(page)).toBeVisible();
   await page.evaluate(() => {
     const api = window.TvItemLayoutDemo!.api;
     const state = (window as any).__watchlistFixture = { fail: false, requests: 0, pages: [] as number[], items: [
@@ -27,7 +28,7 @@ async function setup(page: Page, seeded = false) {
   });
 }
 async function openEditor(page: Page) {
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await expect(editor(page).getByRole('button', { name: 'Save rows', exact: true })).toBeEnabled();
 }
 async function notify(page: Page, user?: string) {
@@ -63,7 +64,6 @@ test('Watchlist can be previewed, titled, ordered, placed and saved without choo
   await expect(page).toHaveURL(/#\/details\?id=series-north/);
   await page.keyboard.press('Escape');
   await expect(homeRow(page).getByRole('button', { name: 'The North Line', exact: true })).toBeFocused();
-  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
   await openEditor(page); await editor(page).getByRole('button', { name: 'Remove row', exact: true }).click();
   await editor(page).getByRole('button', { name: 'Save rows', exact: true }).click(); await goHome(page);
   await expect(homeRow(page)).toHaveCount(0);

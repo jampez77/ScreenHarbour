@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { useDesktopLayout } from './layout-fixture';
 import { parseHomeCollections, homeCollectionKey } from '../../src/home-collection-settings';
 
@@ -74,8 +75,7 @@ const row = (page: Page) => page.locator('#homeTab [data-home-row="platform"]');
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Customize Home rows', exact: true });
 async function openEditor(page: Page) {
   await useDesktopLayout(page);
-  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await expect(dialog(page).getByRole('button', { name: 'Save rows', exact: true })).toBeEnabled();
   return dialog(page);
 }

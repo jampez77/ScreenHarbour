@@ -31,7 +31,13 @@ async function setup(page: Page) {
   await page.goto('/?featured=0#/home');
   await expect.poll(() => ids(page)).toEqual(['movie-tide', 'movie-blue']);
 }
-const tick = (page: Page) => page.clock.fastForward(60_001);
+const tick = async (page: Page) => {
+  await page.clock.fastForward(60_001);
+  // The poll starts demo item/catalogue reads with 90 ms timers. Advance
+  // those new timers too: a jump alone can strand their fake deadlines while
+  // the next assertion waits on real time under parallel browser load.
+  await page.clock.runFor(300);
+};
 const state = (page: Page, changes: Record<string, unknown>) => page.evaluate(changes => Object.assign((window as any).__members, changes), changes);
 const settled = (page: Page) => expect.poll(() => page.evaluate(() => (window as any).__members.calls === (window as any).__members.completed)).toBe(true);
 

@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { useDesktopLayout } from './layout-fixture';
+import { collectionRowsSettingsLink, openCollectionRowsFromSettings } from './collection-rows-fixture';
 
 const coast = 'collection-coast';
 const rowConfig = { version: 1, rows: [
@@ -29,9 +30,7 @@ async function goHome(page: Page) {
 }
 async function openEditor(page: Page) {
   await useDesktopLayout(page);
-  const customize = page.getByRole('button', { name: 'Customize Home rows', exact: true });
-  if (!await customize.isVisible()) await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-  await customize.click();
+  await openCollectionRowsFromSettings(page);
   await expect(editor(page).getByRole('button', { name: 'Save rows', exact: true })).toBeEnabled();
   return editor(page);
 }
@@ -51,10 +50,12 @@ async function moveBefore(dialog: Locator, nativeLabel: string) {
   throw new Error(`Could not place selected row before ${nativeLabel}`);
 }
 
-test('Collections owns the editor; choose rows, save and restore ranked Home navigation', async ({ page }) => {
+test('Settings owns the editor; choose rows, save and restore ranked Home navigation', async ({ page }) => {
   await page.goto('/?featured=0#/home');
   await expect(home(page).getByRole('button', { name: 'Customize Home rows', exact: true })).toHaveCount(0);
   await home(page).getByRole('region', { name: 'My Media', exact: true }).getByRole('button', { name: 'Collections', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Collections', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Customize Home rows', exact: true })).toHaveCount(0);
   const dialog = await openEditor(page);
   await dialog.getByRole('button', { name: 'Add Collections row', exact: true }).click();
   await dialog.getByRole('group', { name: 'Collections row', exact: true }).getByRole('button', { name: 'Coastal Stories', exact: true }).click();
@@ -66,7 +67,8 @@ test('Collections owns the editor; choose rows, save and restore ranked Home nav
   await members.getByRole('button', { name: 'Ranked artwork', exact: true }).click();
   await dialog.getByRole('button', { name: 'Save rows', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Customize Home rows', exact: true })).toBeFocused();
+  await expect(collectionRowsSettingsLink(page)).toBeFocused();
+  await expect(page).toHaveURL(/#\/mypreferencesmenu$/);
   await goHome(page);
   await expect(rowItems(page, 'Trending Movies')).toHaveCount(2);
   await expect(row(page, 'Trending Movies').locator('.tvl-home-rank')).toHaveCount(2);
@@ -96,7 +98,8 @@ test('one row editor validates selection, supports remote Select, and Cancel dis
   await expect(dialog.getByRole('status')).toContainText('Choose at least one');
   await expect(dialog.getByLabel('Row title', { exact: true })).toBeFocused();
   await remote(page, 'back'); await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Customize Home rows', exact: true })).toBeFocused();
+  await expect(collectionRowsSettingsLink(page)).toBeFocused();
+  await expect(page).toHaveURL(/#\/mypreferencesmenu$/);
   expect(await saved(page)).toEqual(rowConfig);
   const reopened = await openEditor(page);
   await expect(reopened.locator('.tvl-home-row-choice')).toHaveCount(2);
@@ -289,14 +292,19 @@ for (const intent of ['none', 'arrow', 'command', 'pointer'] as const) {
   });
 }
 
-test('only accessible collections are fetched and account switches destroy the editor without saving drafts', async ({ page }) => {
+test('only accessible collections are fetched and account switches replace the editor without saving drafts', async ({ page }) => {
   await seed(page, { version: 1, rows: [{ ...rowConfig.rows[1], collectionIds: ['not-visible'], title: 'Unavailable' }] });
   await page.goto('/?featured=0#/home');
   await expect(row(page, 'Unavailable')).toContainText('No accessible collections selected');
   const dialog = await openEditor(page);
   await dialog.getByLabel('Row title', { exact: true }).fill('Unsaved secret title');
+  await dialog.evaluate(node => { (window as any).__previousAccountEditor = node; });
   await page.evaluate(() => { window.TvItemLayoutDemo!.api.userId = 'other-account'; window.TvItemLayout!.refresh(); });
-  await expect(dialog).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate(node => node !== (window as any).__previousAccountEditor && !(window as any).__previousAccountEditor.isConnected)).toBe(true);
+  await expect(dialog.locator('.tvl-home-row-choice')).toHaveCount(0);
+  await expect(dialog.getByLabel('Row title', { exact: true })).toHaveCount(0);
+  await expect(dialog).not.toContainText('Unsaved secret title');
   await goHome(page); await expect(row(page, 'Unavailable')).toHaveCount(0);
   expect((await saved(page)).rows[0].title).toBe('Unavailable');
   const other = await openEditor(page); await expect(other.locator('.tvl-home-row-choice')).toHaveCount(0);

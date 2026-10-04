@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { useDesktopLayout } from './layout-fixture';
 
 const editor = (page: Page) => page.getByRole('dialog', { name: 'Customize Home rows', exact: true });
@@ -6,8 +7,7 @@ const preview = (page: Page) => editor(page).getByRole('complementary', { name: 
 
 async function openEditor(page: Page) {
   await useDesktopLayout(page);
-  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await expect(editor(page).getByRole('button', { name: 'Save rows', exact: true })).toBeEnabled();
 }
 async function addSeason(page: Page) {
@@ -139,7 +139,7 @@ test('live preview uses real row focus, opening and closing items without naviga
     await expect(cards.nth(1).locator('.tvl-home-row-caption')).toHaveCSS('opacity', '0');
   }
   await expect(editor(page)).toBeVisible();
-  await expect(page).toHaveURL(/#\/list\?parentId=library-collections/);
+  await expect(page).toHaveURL(/#\/mypreferencesmenu\?cinemaCollections=1$/);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await editor(page).getByRole('combobox', { name: 'Item reveal', exact: true }).selectOption('doors');
   await editor(page).evaluate(node => { node.scrollTop = 0; });

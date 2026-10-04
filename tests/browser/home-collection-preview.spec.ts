@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { collectionRowsSettingsLink, openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { useDesktopLayout } from './layout-fixture';
 
 const editor = (page: Page) => page.getByRole('dialog', { name: 'Customize Home rows', exact: true });
@@ -6,11 +7,11 @@ const preview = (page: Page) => editor(page).getByRole('complementary', { name: 
 const cards = (page: Page) => preview(page).locator('.tvl-home-row-card');
 
 test('missing collection and item thumbnails stay contained and do not cover editor controls', async ({ page }) => {
-  await page.goto('/?featured=0#/list?parentId=library-collections');
+  await page.goto('/?featured=0#/mypreferencesmenu');
   await useDesktopLayout(page);
-  await expect(page.getByRole('button', { name: 'Customize Home rows', exact: true })).toBeVisible();
+  await expect(collectionRowsSettingsLink(page)).toBeVisible();
   await page.evaluate(() => { window.TvItemLayoutDemo!.api.image = () => null; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await editor(page).getByRole('button', { name: 'Add collection items row', exact: true }).click();
   const contained = (selector: string) => editor(page).locator(selector).evaluateAll(nodes => nodes.every(node => {
     const fallback = getComputedStyle(node, '::before'), bounds = node.getBoundingClientRect();
@@ -33,20 +34,19 @@ test('missing collection and item thumbnails stay contained and do not cover edi
 });
 
 async function openEditor(page: Page, visitHome = true) {
-  await page.goto(visitHome ? '/?featured=0#/home' : '/?featured=0#/list?parentId=library-collections');
+  await page.goto(visitHome ? '/?featured=0#/home' : '/?featured=0#/mypreferencesmenu');
   await useDesktopLayout(page);
   if (visitHome) {
     await expect(page.locator('#homeTab')).toBeVisible();
-    await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
   } else {
-    // The demo eagerly renders Home even for a direct Collection URL. Model
+    // The demo eagerly renders Home even for a direct Settings URL. Model
     // Jellyfin's first visit, where those native sections have not mounted yet.
     await page.evaluate(() => {
       document.querySelector('#homeTab')?.remove();
       localStorage.removeItem(`jellyfin-cinema.home-collections.v1:${encodeURIComponent(location.origin)}:demo:positions`);
     });
   }
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await expect(editor(page).getByRole('button', { name: 'Save rows', exact: true })).toBeEnabled();
 }
 async function addItemRow(page: Page) {
@@ -72,7 +72,7 @@ test('new row preview follows the draft title, actual artwork and ranks without 
   await expect(preview(page).locator('.tvl-home-rank').first()).toHaveAttribute('src', /^data:image\/svg\+xml,/);
   expect(await page.evaluate(() => localStorage.getItem(`jellyfin-cinema.home-collections.v1:${encodeURIComponent(location.origin)}:demo`))).toBeNull();
   await cards(page).first().click();
-  await expect(editor(page)).toBeVisible(); await expect(page).toHaveURL(/#\/list\?parentId=library-collections/);
+  await expect(editor(page)).toBeVisible(); await expect(page).toHaveURL(/#\/mypreferencesmenu\?cinemaCollections=1$/);
   await expect(cards(page).first()).not.toHaveAttribute('tabindex');
   await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
   expect(await page.evaluate(() => localStorage.getItem(`jellyfin-cinema.home-collections.v1:${encodeURIComponent(location.origin)}:demo`))).toBeNull();
@@ -134,7 +134,7 @@ test('late preview results preserve the title input and caret and cannot overwri
   // A second editor has no cached items. Change collection before the old request completes.
   await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.evaluate(() => { delete (window as any).__finishPreview; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click(); await addItemRow(page);
+  await openCollectionRowsFromSettings(page); await addItemRow(page);
   await expect(preview(page)).toContainText('Loading preview…');
   await expect.poll(() => page.evaluate(() => typeof (window as any).__finishPreview)).toBe('function');
   await editor(page).getByRole('button', { name: 'Into the Wilderness', exact: true }).click();
@@ -185,7 +185,7 @@ test('preview scroll controls work without navigation and responsive editor stay
     expect(await editor(page).evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     const box = await preview(page).boundingBox(); expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x + box!.width).toBeLessThanOrEqual(width);
   }
-  await expect(page).toHaveURL(/#\/list\?parentId=library-collections/);
+  await expect(page).toHaveURL(/#\/mypreferencesmenu\?cinemaCollections=1$/);
 });
 
 test('retrying the preview from Item order preserves remote focus after the full order editor updates', async ({ page }) => {

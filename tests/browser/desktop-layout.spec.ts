@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 
 // Serve the preview with the display mode selected before either application
 // script runs. No TV layout class or TV-only native controls are added.
@@ -53,8 +54,7 @@ test('desktop collection tabs, ranked cards and live row editor retain their sav
   await expect(page.getByRole('dialog', { name: 'North of Nowhere details', exact: true })).toBeVisible();
   await page.keyboard.press('Escape'); await expect(series).toBeFocused();
   await expect(row.getByRole('tab', { name: 'Shows', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await home(page).getByRole('region', { name: 'My Media', exact: true }).getByRole('button', { name: 'Collections', exact: true }).click();
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   const editor = page.getByRole('dialog', { name: 'Customize Home rows', exact: true });
   const title = editor.getByLabel('Row title', { exact: true });
   await title.fill('Desktop favourites'); await title.press('ArrowLeft');

@@ -55,7 +55,7 @@ NOW uses **NOW Cinema** for Movies and **NOW** for Shows. Paramount+ uses the UK
 
 ## Add the Home rows
 
-1. In Jellyfin Web's desktop display mode, open **Collections → Customize collection rows** and add a collection items row.
+1. In Jellyfin Web's desktop display mode, open **Settings → ScreenHarbour → Collection rows** and add a collection items row.
 2. Name the row after the platform, for example **Trending on Netflix**.
 3. Choose **Add collection tabs**. The initial labels are **Movies** and **Shows**; select each tab and choose its corresponding SmartLists collection. Change **Tab label** if you want different names.
 4. In **Item order**, choose **Collection order** for each tab. This keeps the order supplied by SmartLists. Choosing a title/year sort or manual order instead changes only that tab's Home display.

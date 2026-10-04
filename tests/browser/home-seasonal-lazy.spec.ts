@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 
 const seasonalRow = (page: Page) => page.locator('#homeTab [data-home-row="lazy-season"]');
 const backdrop = (page: Page) => seasonalRow(page).locator('.tvl-seasonal-scene');
@@ -141,8 +142,7 @@ test('leaving Home before native rows are ready never registers global listeners
 test('the seasonal editor preview loads without waiting for Home visibility', async ({ page }) => {
   const state = await fixture(page, 'held', 'desktop');
   await expect(backdrop(page)).toHaveCSS('background-image', 'none');
-  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   const editor = page.getByRole('dialog', { name: 'Customize Home rows', exact: true });
   await editor.getByRole('button', { name: 'Edit Scenery test', exact: true }).click();
   await expect(editor.locator('.tvl-home-preview .tvl-seasonal-scene')).not.toHaveCSS('background-image', 'none');

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { defaultSeasonalAppearance, type HomeCollectionRow, type HomeSeasonalAppearance, type HomeSeasonalArtStyle } from '../../src/home-collection-settings';
 import { useDesktopLayout } from './layout-fixture';
 
@@ -136,8 +137,7 @@ for (const theme of themes) for (const frameStyle of styles(theme)) {
     await fixture(page, { theme, frameStyle });
     for (const id of ['Plain', 'Ranked']) await expectFittedPoster(homeRow(page, id).locator('.tvl-home-row-card').first());
     await useDesktopLayout(page);
-    await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-    await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+    await openCollectionRowsFromSettings(page);
     await page.setViewportSize({ width: 390, height: 900 });
     for (const id of ['Plain', 'Ranked']) {
       await editor(page).getByRole('button', { name: `Edit ${id}`, exact: true }).click();
@@ -152,8 +152,7 @@ for (const theme of themes) test(`${theme} mixed covers hide the entire poster a
   test.setTimeout(60_000);
   await fixture(page, { theme, frameStyle: 'photoreal', coverStyle: 'storybook', reveal: 'doors' });
   await useDesktopLayout(page);
-  await page.evaluate(() => { location.hash = '/list?parentId=library-collections'; });
-  await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
+  await openCollectionRowsFromSettings(page);
   await editor(page).getByRole('button', { name: 'Edit Plain', exact: true }).click();
   await editor(page).getByRole('button', { name: 'Appearance', exact: true }).click();
   for (const reveal of theme === 'christmas' ? ['doors', 'shutters', 'curtains', 'advent'] : ['doors', 'shutters', 'curtains']) {

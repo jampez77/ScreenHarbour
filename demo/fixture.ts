@@ -830,7 +830,7 @@ function syncRoute() {
   const playlists = /^#\/playlists(?:\?|$)/.test(location.hash) || /^#\/list(?:\?|$)/.test(location.hash) && params.get('parentId')==='library-playlists';
   const home = /^#\/home(?:\?|$)/.test(location.hash);
   const preferences = /^#\/mypreferencesmenu(?:\?|$)/.test(location.hash);
-  document.querySelector('.demo-switcher')?.classList.toggle('hide', params.has('cinemaProvider') || params.has('cinemaProviders'));
+  document.querySelector('.demo-switcher')?.classList.toggle('hide', params.has('cinemaProvider') || params.has('cinemaProviders') || params.has('cinemaCollections') || params.has('cinemaLoading'));
   nativeSettings.classList.toggle('hide', !preferences);
   nativePage.id=movies?'moviesPage':shows?'tvRecommendedPage':music?'musicRecommendedPage':/^#\/playlists(?:\?|$)/.test(location.hash)?'playlistsPage':guide?'liveTvSuggestedPage':'';
   const homeActive=home&&params.get('tab')!=='1';

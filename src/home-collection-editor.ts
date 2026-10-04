@@ -76,14 +76,17 @@ export class HomeCollectionEditor {
     this.status.setAttribute('role', 'status'); this.status.textContent = 'Loading collections…';
     const layout = el('div', 'tvl-home-editor-layout'); layout.append(this.sidebar, this.workspace);
     panel.append(header, el('p', 'tvl-home-editor-intro', this.store.synced ? 'Saved rows follow this Jellyfin account across your devices.' : 'This preview saves choices on this device.'), this.status, layout);
-    this.element.append(panel); document.body.append(this.element);
-    this.removeRemote = attachRemote(this.element, () => this.close()); cancel.focus();
+    this.element.append(panel);
+    this.removeRemote = attachRemote(this.element, () => this.close());
     this.removeWatchlist = subscribeWatchlist(api, () => {
       this.watchlistRevision++; this.items.delete(watchlistSource); this.errors.delete(watchlistSource); this.loading.delete(watchlistSource);
       const row = this.selectedRow();
       if (row?.kind === 'watchlist') { if (this.tab === 'order') this.redraw(); else this.renderPreview(row); }
     });
-    void this.loadCollections();
+  }
+  async load(): Promise<void> {
+    this.element.querySelector<HTMLElement>('[data-editor-focus="cancel"]')?.focus({ preventScroll: true });
+    await this.loadCollections();
   }
   private async loadCollections(): Promise<void> {
     if (this.disposed || this.loadingSettings || this.saving) return;

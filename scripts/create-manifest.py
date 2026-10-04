@@ -32,7 +32,7 @@ for suffix, target in [('3', '12.0.0'), ('2', '10.11.0'), ('1', '10.10.7')]:
     assert archive.with_suffix('.zip.sha256').read_text().split()[0] == hashlib.sha256(data).hexdigest()
     versions.append({
         'version': version,
-        'changelog': 'Reuses Home cards and artwork when returning from movie details. Populated native rows refresh without blanking Home, and only changed custom rows are rebuilt. Pauses seasonal work while Home is inactive. Preserves focus, scroll positions, all settings, account isolation, shuffle behavior and seasonal effects. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
+        'changelog': 'Moves Home collection-row editing into desktop Settings, under ScreenHarbour > Collection rows, alongside Streaming services and Loading screen. The Collections page retains its browsing controls. Preserves all saved rows and settings; editing remains desktop-only. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
         'targetAbi': target,
         'sourceUrl': f'{release_url_prefix}v{release}/{archive.name}',
         # Jellyfin's catalogue protocol requires MD5; SHA-256 files are also published.

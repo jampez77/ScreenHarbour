@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 import { useDesktopLayout } from './layout-fixture';
 
 const config = { version: 1, rows: [{ id: 'platform', kind: 'items', title: 'Trending on Netflix', collectionIds: ['collection-coast'], ranked: true, placement: 'start', itemSort: 'collection', itemOrder: [], tabs: [
@@ -14,8 +15,7 @@ async function seed(page: Page) {
 }
 async function openEditor(page: Page) {
   await useDesktopLayout(page);
-  await page.evaluate(()=>{location.hash='/list?parentId=library-collections';});
-  await page.getByRole('button',{name:'Customize Home rows',exact:true}).click();
+  await openCollectionRowsFromSettings(page);
   await expect(dialog(page).getByRole('button',{name:'Save rows',exact:true})).toBeEnabled();
 }
 async function remote(page: Page, command: string) {
