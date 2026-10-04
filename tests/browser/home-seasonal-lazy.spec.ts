@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const seasonalRow = (page: Page) => page.locator('#homeTab [data-home-row="lazy-season"]');
-const backdrop = (page: Page) => seasonalRow(page).locator('.tvl-seasonal-backdrop');
+const backdrop = (page: Page) => seasonalRow(page).locator('.tvl-seasonal-scene');
 type ObserverMode = 'real' | 'held' | 'missing' | 'broken';
 
 async function fixture(page: Page, mode: ObserverMode = 'real', layout = 'tv', holdNative = false) {
@@ -90,7 +90,7 @@ test('direct TV focus loads scenery immediately even before any intersection cal
   await expect(backdrop(page)).toHaveCSS('background-image', 'none');
   const loaded = await seasonalRow(page).locator('.tvl-home-row-card').first().evaluate(node => {
     node.focus({ preventScroll: true });
-    return (node.closest('.tvl-seasonal-row')!.querySelector('.tvl-seasonal-backdrop') as HTMLElement).style.backgroundImage;
+    return (node.closest('.tvl-seasonal-row')!.querySelector('.tvl-seasonal-scene') as HTMLElement).style.backgroundImage;
   });
   expect(loaded).toContain('halloween-photoreal');
   await expect.poll(() => state.requests.length).toBe(1);
@@ -112,7 +112,7 @@ test('leaving Home disconnects pending scenery and ignores a queued callback', a
   await expect(page.getByRole('dialog', { name: 'Collections', exact: true })).toBeVisible();
   const result = await page.evaluate(() => (window as any).__sceneryObservers.map((observer: any) => {
     observer.callback([{ target: observer.target, isIntersecting: true, intersectionRatio: 1 }]);
-    return { disconnected: observer.disconnected, image: observer.target.querySelector('.tvl-seasonal-backdrop').style.backgroundImage };
+    return { disconnected: observer.disconnected, image: observer.target.querySelector('.tvl-seasonal-scene').style.backgroundImage };
   }));
   expect(result.length).toBeGreaterThan(0);
   expect(result.every((entry: any) => entry.disconnected && !entry.image)).toBe(true);
@@ -125,7 +125,7 @@ test('leaving Home before native rows are ready never registers global listeners
   await expect(seasonalRow(page)).toHaveCount(0);
   const prepared = await page.evaluate(() => (window as any).__preparedSeasonalRows.map((row: HTMLElement) => ({
     connected: row.isConnected, cards: row.querySelectorAll('.tvl-home-row-card').length,
-    image: (row.querySelector('.tvl-seasonal-backdrop') as HTMLElement).style.backgroundImage,
+    image: (row.querySelector('.tvl-seasonal-scene') as HTMLElement).style.backgroundImage,
   })));
   expect(prepared.every((row: any) => !row.connected && row.cards === 2 && !row.image)).toBe(true);
   expect(await page.evaluate(() => (window as any).__sceneryObservers.length)).toBe(0);
@@ -145,7 +145,7 @@ test('the seasonal editor preview loads without waiting for Home visibility', as
   await page.getByRole('button', { name: 'Customize Home rows', exact: true }).click();
   const editor = page.getByRole('dialog', { name: 'Customize Home rows', exact: true });
   await editor.getByRole('button', { name: 'Edit Scenery test', exact: true }).click();
-  await expect(editor.locator('.tvl-home-preview .tvl-seasonal-backdrop')).not.toHaveCSS('background-image', 'none');
+  await expect(editor.locator('.tvl-home-preview .tvl-seasonal-scene')).not.toHaveCSS('background-image', 'none');
   await expect.poll(() => state.requests.length).toBe(1);
   expect(state.errors).toEqual([]);
 });

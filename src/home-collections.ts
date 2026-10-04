@@ -6,6 +6,7 @@ import { emptyHomeCollections, orderHomeItems, homeCollectionTabs, homeTabLabel,
 import { createHomeCollectionStore, type HomeCollectionStore } from './home-collection-store';
 import { nativeHomeRows, rememberHomeRows } from './home-row-placement';
 import { decorateSeasonalRow, refreshSeasonalBackdrop, refreshSeasonalDate } from './home-seasonal-appearance';
+import { scrollSeasonalSelectionIntoView, seasonalNavigationTop } from './home-seasonal-motion';
 import { dailyAdvent } from './home-advent';
 import { homeRowCard } from './home-row-card';
 import { homeRowTabs } from './home-row-tabs';
@@ -78,6 +79,7 @@ export class HomeCollections {
   private lastSync = 0;
   private syncTimer?: number;
   private observer: MutationObserver;
+  private placementStyle = el('div').style;
   private disposed = false;
   private revision = 0;
   private inputRevision = 0;
@@ -159,7 +161,7 @@ export class HomeCollections {
     window.addEventListener('command', this.onCommand, true);
     window.addEventListener('pointerdown', this.onPointer, true);
     window.addEventListener('focusin', this.rememberNativeFocus, true);
-    window.addEventListener('scroll', this.onScroll, true);
+    window.addEventListener('scroll', this.queuePositionCapture, true);
     window.addEventListener('click', this.rememberPosition, true);
     window.addEventListener('wheel', this.onWheel, { capture: true, passive: true });
     window.addEventListener('storage', this.onProviderStorage);
@@ -171,7 +173,20 @@ export class HomeCollections {
       // transform updates so animated TV focus does not keep reattaching rows.
       if (records.some(record => {
         const target = record.target as Element;
-        if (record.attributeName === 'style') return target.matches('.verticalSection, .ec-root, .homeSectionsContainer, #homeTab');
+        if (record.attributeName === 'style') {
+          if (!target.matches('.verticalSection, .ec-root, .homeSectionsContainer, #homeTab')) return false;
+          const style = target.getAttribute('style');
+          if (record.oldValue === style) return false;
+          // Seasonal focus temporarily disables native smooth scrolling, then
+          // restores it in the same turn. These writes cannot move a Home row.
+          // Parse declarations so CSS values containing semicolons stay intact.
+          const structural = (value: string | null): string => {
+            this.placementStyle.cssText = value || '';
+            this.placementStyle.removeProperty('scroll-behavior');
+            return this.placementStyle.cssText;
+          };
+          return structural(record.oldValue) !== structural(style);
+        }
         if (record.attributeName === 'class' && target.closest('.tvl-home-collection-row')) {
           // Opening a door or expanding a focused seasonal row changes its
           // appearance, not its insertion point or saved scroller identity.
@@ -265,7 +280,7 @@ export class HomeCollections {
       && !active.closest('.tvl-home-collection-row, .tvl-home-provider-row, .tvl-home-collections')) {
       nativeReturnFocus.set(host, { key: this.key, element: active });
     }
-    this.rememberPosition();
+    this.queuePositionCapture();
   };
 
   private positionRows(host: HTMLElement, anchors?: ReturnType<typeof nativeHomeRows>): PositionRow[] {
@@ -277,6 +292,7 @@ export class HomeCollections {
     this.positionRowCache = { host, rows }; return rows;
   }
   private rememberPosition = (): void => {
+    if (this.captureFrame !== undefined) { cancelAnimationFrame(this.captureFrame); this.captureFrame = undefined; }
     const host = this.root.parentElement;
     if (this.disposed || !this.initialPaint || !host || !/^#\/?home(?:\/?\?|\/?$)/i.test(location.hash)
       || JSON.stringify([this.api.serverId, this.api.userId]) !== this.accountIdentity
@@ -284,8 +300,11 @@ export class HomeCollections {
       || host.closest('.hide,[hidden]') || !host.getClientRects().length || getComputedStyle(host).visibility === 'hidden') return;
     const owners = new Set<HTMLElement>();
     if (document.scrollingElement instanceof HTMLElement) owners.add(document.scrollingElement);
+    // Capturing every ancestor is cheap and also covers a container that has
+    // just become scrollable. Testing each computed overflow on every focus
+    // forces style work; restoring zero on a non-scroller is harmless.
     for (let element: HTMLElement | null = host; element; element = element.parentElement) {
-      if (element.scrollTop || /auto|scroll/.test(getComputedStyle(element).overflowY)) owners.add(element);
+      owners.add(element);
     }
     const active = document.activeElement as HTMLElement | null;
     this.lastPosition = {
@@ -337,7 +356,7 @@ export class HomeCollections {
       if (!this.disposed && inputRevision === this.inputRevision && (document.activeElement === document.body || host.contains(document.activeElement))) apply();
     });
   }
-  private onScroll = (): void => {
+  private queuePositionCapture = (): void => {
     if (this.captureFrame !== undefined) return;
     this.captureFrame = requestAnimationFrame(() => { this.captureFrame = undefined; this.rememberPosition(); });
   };
@@ -682,54 +701,78 @@ export class HomeCollections {
   }
 
   private focus(node?: HTMLElement): void {
-    node?.focus({ preventScroll: true }); node?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    node?.focus({ preventScroll: true });
+    if (node && !scrollSeasonalSelectionIntoView(node)) node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
   private owns(node: Element | null): boolean { return !!node && this.sections.some(section => section.element.contains(node)); }
   private move(direction: string): boolean {
     const active = document.activeElement as HTMLElement;
     const host = this.root.parentElement;
     if (!host?.contains(active) || active.matches('input,textarea,select') || active.closest('.ec-root')) return false;
-    const controls = (group: HTMLElement) => Array.from(group.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],[tabindex="0"]'))
-      .filter(node => !node.closest('.hide,[hidden]') && node.getClientRects().length > 0);
+    const candidates = (group: HTMLElement) => Array.from(group.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],[tabindex="0"]'));
+    const usable = (node: HTMLElement) => !node.matches(':disabled') && !node.closest('.hide,[hidden]')
+      && node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden';
     if (direction === 'left' || direction === 'right') {
       if (!this.owns(active)) return false;
       // Horizontal movement cannot cross rows. Avoid measuring every native
       // and collection row for each remote repeat while sliding one strip.
       const group = active.closest<HTMLElement>('.focuscontainer-x');
       if (!group || group.querySelector('.focuscontainer-x')) return false;
-      const current = controls(group), index = current.indexOf(active);
+      const current = candidates(group), index = current.indexOf(active);
       if (index < 0) return false;
-      this.focus(current[index + (direction === 'right' ? 1 : -1)]); return true;
+      // Membership is read fresh, but only the next usable neighbour needs a
+      // layout/style check. Measuring all 60 posters makes every remote repeat
+      // pay for offscreen items, even when moving just one place.
+      const step = direction === 'right' ? 1 : -1;
+      for (let next = index + step; next >= 0 && next < current.length; next += step) {
+        if (usable(current[next])) { this.focus(current[next]); break; }
+      }
+      return true;
     }
     const groups = Array.from(host.querySelectorAll<HTMLElement>('.focuscontainer-x, .ec-root'))
-      .filter(group => !group.querySelector('.focuscontainer-x') && controls(group).length > 0)
+      .filter(group => !group.querySelector('.focuscontainer-x') && candidates(group).some(usable))
       // Native navigation uses screen geometry. Follow that same row order at
       // custom/native boundaries even when another plugin reorders native DOM.
-      .map(group => ({ group, top: group.getBoundingClientRect().top }))
+      .map(group => ({ group, top: seasonalNavigationTop(group) }))
       .sort((a, b) => a.top - b.top).map(({ group }) => group);
-    const groupIndex = groups.findIndex(group => controls(group).includes(active));
+    const groupIndex = groups.findIndex(group => group.contains(active));
     if (groupIndex < 0) return false;
-    const current = controls(groups[groupIndex]), index = current.indexOf(active);
+    const current = candidates(groups[groupIndex]), activeIndex = current.indexOf(active);
+    if (activeIndex < 0 || !usable(active)) return false;
+    // Preserve the visible column without measuring posters after either
+    // selection. Only a shorter destination needs a scan to its final item.
+    const index = current.slice(0, activeIndex).filter(usable).length;
     const next = groups[groupIndex + (direction === 'down' ? 1 : -1)];
     if (!this.owns(active) && !this.owns(next)) return false;
     if (next) {
       const sameRow = active.closest('.tvl-home-collection-row') === next.closest('.tvl-home-collection-row');
-      this.focus(sameRow && next.classList.contains('tvl-home-source-tabs') ? next.querySelector<HTMLElement>('[aria-selected="true"]') || undefined
-        : controls(next)[sameRow && groups[groupIndex].classList.contains('tvl-home-source-tabs') ? 0 : Math.min(index, controls(next).length - 1)]);
+      if (sameRow && next.classList.contains('tvl-home-source-tabs')) this.focus(next.querySelector<HTMLElement>('[aria-selected="true"]') || undefined);
+      else {
+        const targetIndex = sameRow && groups[groupIndex].classList.contains('tvl-home-source-tabs') ? 0 : index;
+        let target: HTMLElement | undefined, visibleIndex = 0;
+        for (const node of candidates(next)) if (usable(node)) {
+          target = node;
+          if (visibleIndex++ === targetIndex) break;
+        }
+        this.focus(target);
+      }
     }
     return !!next;
   }
   private onKey = (event: KeyboardEvent): void => {
-    this.rememberPosition();
     this.inputRevision++;
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
     const direction: Record<string, string> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+    // Arrow, focus and scroll events share one snapshot per frame. Activation,
+    // Back and shortcuts still save synchronously before native routing runs.
+    if (direction[event.key] && !event.altKey && !event.ctrlKey && !event.metaKey) this.queuePositionCapture();
+    else this.rememberPosition();
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     if (direction[event.key] && this.move(direction[event.key])) { event.preventDefault(); event.stopImmediatePropagation(); }
   };
   private onCommand = (event: Event): void => {
-    this.rememberPosition();
     this.inputRevision++;
     const command = (event as CustomEvent).detail?.command?.toLowerCase();
+    if (['left', 'right', 'up', 'down'].includes(command)) this.queuePositionCapture(); else this.rememberPosition();
     if (['left', 'right', 'up', 'down'].includes(command) && this.move(command)) { event.preventDefault(); event.stopImmediatePropagation(); }
     else if (this.owns(document.activeElement) && ['select', 'enter', 'ok'].includes(command)) {
       event.preventDefault(); event.stopImmediatePropagation(); (document.activeElement as HTMLElement).click();
@@ -922,7 +965,7 @@ export class HomeCollections {
     window.removeEventListener('keydown', this.onKey, true); window.removeEventListener('command', this.onCommand, true);
     window.removeEventListener('pointerdown', this.onPointer, true);
     window.removeEventListener('focusin', this.rememberNativeFocus, true);
-    window.removeEventListener('scroll', this.onScroll, true); window.removeEventListener('click', this.rememberPosition, true);
+    window.removeEventListener('scroll', this.queuePositionCapture, true); window.removeEventListener('click', this.rememberPosition, true);
     window.removeEventListener('wheel', this.onWheel, true); if (this.restoreFrame !== undefined) cancelAnimationFrame(this.restoreFrame);
     if (this.captureFrame !== undefined) cancelAnimationFrame(this.captureFrame);
     if (this.refreshFrame !== undefined) cancelAnimationFrame(this.refreshFrame);

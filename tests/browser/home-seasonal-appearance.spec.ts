@@ -30,7 +30,7 @@ test('seasonal doors reveal the selected item, close behind it, and preserve nor
   await fixture(page,{theme:'christmas',reveal:'doors',expansion:'large'});
   const section=row(page,'Halloween'),cards=section.locator('.tvl-home-row-card');
   const height=await section.evaluate(node=>node.getBoundingClientRect().height);
-  const backgroundSize=await section.locator('.tvl-seasonal-backdrop').evaluate(node=>getComputedStyle(node).backgroundSize);
+  const backgroundSize=await section.locator('.tvl-seasonal-scene').evaluate(node=>getComputedStyle(node).backgroundSize);
   const posterHeight=await cards.first().locator('.tvl-home-row-art').evaluate(node=>node.getBoundingClientRect().height);
   await expect(cards.first().locator('.tvl-home-row-caption')).toHaveCSS('opacity','0');
   await expect(cards.first().locator('.tvl-seasonal-door-number')).toHaveText('1');
@@ -40,7 +40,7 @@ test('seasonal doors reveal the selected item, close behind it, and preserve nor
   await expect(cards.first().locator('.tvl-home-row-caption')).toHaveCSS('opacity','1');
   await expect.poll(()=>section.evaluate(node=>node.getBoundingClientRect().height)).toBeGreaterThan(height*1.4);
   expect(await cards.first().locator('.tvl-home-row-art').evaluate(node=>node.getBoundingClientRect().height)).toBe(posterHeight);
-  expect(await section.locator('.tvl-seasonal-backdrop').evaluate(node=>getComputedStyle(node).backgroundSize)).toBe(backgroundSize);
+  expect(await section.locator('.tvl-seasonal-scene').evaluate(node=>getComputedStyle(node).backgroundSize)).toBe(backgroundSize);
   await page.keyboard.press('ArrowRight');
   await expect(cards.nth(1)).toBeFocused(); await expect(cards.first()).not.toHaveClass(/tvl-seasonal-item-open/);
   await expect(cards.nth(1)).toHaveClass(/tvl-seasonal-item-open/);
@@ -80,7 +80,7 @@ for(const background of ['static','parallax'] as const) test(`${background} back
   const section=row(page,'Halloween'),backdrop=section.locator('.tvl-seasonal-backdrop');
   await expect(section).toHaveAttribute('data-seasonal-background',background);
   await section.locator('.tvl-home-row-card').first().focus();
-  const scenery=background==='parallax'?section.locator('.tvl-seasonal-scene'):backdrop;
+  const scenery=section.locator('.tvl-seasonal-scene');
   const initial=await scenery.evaluate(node=>getComputedStyle(node).transform);
   for(let i=0;i<11;i++)await page.keyboard.press('ArrowRight');
   if(background==='parallax') await expect.poll(()=>scenery.evaluate(node=>getComputedStyle(node).transform)).not.toBe(initial);
@@ -127,7 +127,7 @@ for(const theme of ['halloween','christmas'] as const) test(`${theme} photoreal 
   page.on('response',response=>{if(response.url().includes('/assets/seasonal/')) {expect(response.status()).toBe(200);assets.push(response.url());}});
   await fixture(page,{theme,backgroundStyle:theme==='halloween'?'nightmare':'photoreal',frameStyle:'photoreal',coverStyle:'photoreal',reveal:'shutters'});
   const section=row(page,'Halloween'),cards=section.locator('.tvl-home-row-card');
-  await expect.poll(()=>assets.filter(url=>/-tv\.webp\?v=0\.2\.48$/.test(url)).length).toBeGreaterThanOrEqual(3);
+  await expect.poll(()=>assets.filter(url=>/-tv\.webp\?v=0\.2\.49$/.test(url)).length).toBeGreaterThanOrEqual(3);
   expect(assets.every(url=>new URL(url).origin===new URL(page.url()).origin)).toBe(true);
   await expect(cards.first().locator('.tvl-seasonal-full-door')).toHaveCount(2);
   await expect(cards.first().locator('.tvl-seasonal-window')).toHaveCount(1);

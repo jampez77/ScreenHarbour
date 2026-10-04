@@ -4,7 +4,7 @@ set -euo pipefail
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 project="$repo_dir/server/Jellyfin.Plugin.TvItemLayout.csproj"
 target="${1:-10.11.0}"
-release_version="0.2.48"
+release_version="0.2.49"
 
 case "$target" in
     all) targets=(10.10.7 10.11.0 12.0.0) ;;

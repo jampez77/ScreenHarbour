@@ -153,11 +153,11 @@ test('scenery, frame and cover artwork are independent, persist, and never carry
   await expect(style('Scenery style')).toHaveValue('classic');
   await expect(style('Frame style')).toHaveValue('classic');
   await expect(style('Door or shutter style')).toHaveCount(0);
-  const illustratedBackground = await preview(page).locator('.tvl-seasonal-backdrop').getAttribute('style');
+  const illustratedBackground = await preview(page).locator('.tvl-seasonal-scene').getAttribute('style');
   const illustratedFrame = await preview(page).locator('.tvl-seasonal-frame').first().getAttribute('src');
   await style('Scenery style').selectOption('nightmare');
   await style('Frame style').selectOption('photoreal');
-  expect(await preview(page).locator('.tvl-seasonal-backdrop').getAttribute('style')).not.toBe(illustratedBackground);
+  expect(await preview(page).locator('.tvl-seasonal-scene').getAttribute('style')).not.toBe(illustratedBackground);
   expect(await preview(page).locator('.tvl-seasonal-frame').first().getAttribute('src')).not.toBe(illustratedFrame);
   await expect(editor(page).getByText('Nightmare is designed for adult horror collections.', { exact: true })).toHaveCount(1);
   await editor(page).getByRole('combobox', { name: 'Item reveal', exact: true }).selectOption('shutters');
