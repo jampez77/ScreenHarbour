@@ -14,15 +14,18 @@ const settings = { version: 1, rows: [
 ] };
 const cards = (page: Page) => page.locator('#homeTab [data-home-row="return-seasonal"] .tvl-home-row-card');
 
-async function fixture(page: Page) {
+async function fixture(page: Page, shuffle: boolean) {
+  const shuffledSettings = { ...settings, rows: settings.rows.map(row => ({ ...row, shuffle,
+    ...('children' in row ? { children: row.children.map(child => ({ ...child, shuffle })) } : {}) })) };
   await page.route('**/dist/demo.js', async route => {
     const response = await route.fetch();
     await route.fulfill({ response, body: `${await response.text()}\n(() => {
       const api=window.TvItemLayoutDemo.api, members=api.getCollectionItems, image=api.image, item=api.getItem;
-      const state=window.__returnPerformance={hold:false,pending:[],reads:0,errors:[],
+      const state=window.__returnPerformance={hold:false,pending:[],reads:0,errors:[],random:0.999,
         release(){this.hold=false;this.pending.splice(0).forEach(resolve=>resolve());}};
+      Math.random=()=>state.random;
       const wait=async()=>{state.reads++;if(state.hold)await new Promise(resolve=>state.pending.push(resolve));};
-      api.homeCollections={isCurrent:()=>true,load:async()=>{await wait();return{Revision:'rows',Settings:${JSON.stringify(settings)}};},save:async()=>{throw new Error('Unexpected write');}};
+      api.homeCollections={isCurrent:()=>true,load:async()=>{await wait();return{Revision:'rows',Settings:${JSON.stringify(shuffledSettings)}};},save:async()=>{throw new Error('Unexpected write');}};
       api.providerHomes={isCurrent:()=>true,load:async()=>{await wait();return{Revision:'services',Settings:${JSON.stringify(defaultProviderHomes())}};},save:async()=>{throw new Error('Unexpected write');}};
       api.getCollectionItems=async id=>{await wait();const found=await members(id);return id==='collection-coast'
         ?Array.from({length:60},(_,i)=>({...found[i%found.length],Id:'return-film-'+i,Name:'Film '+(i+1)})):found;};
@@ -39,7 +42,7 @@ async function fixture(page: Page) {
   await expect.poll(() => page.evaluate(() => document.querySelector('[data-home-row="return-seasonal"]')!.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)).toBe(0);
   await page.evaluate(() => {
     const state=(window as any).__returnPerformance;
-    state.hold=true;
+    state.hold=true;state.random=0;
     state.cards=Array.from(document.querySelectorAll('#homeTab .tvl-home-row-card'));
     state.rows=Array.from(document.querySelectorAll('#homeTab [data-home-row]'));
     state.posters=Array.from(document.querySelectorAll('#homeTab .tvl-home-row-card img'));
@@ -49,8 +52,8 @@ async function fixture(page: Page) {
   await expect(page.getByRole('dialog', { name: 'Film 13 details', exact: true })).toBeVisible();
 }
 
-for (const nativeRefreshing of [false, true]) test(`warm Back reuses loaded seasonal artwork and responds immediately${nativeRefreshing ? ' while populated native rows refresh' : ''}`, async ({ page }) => {
-  await fixture(page);
+for (const shuffle of [false, true]) for (const nativeRefreshing of [false, true]) test(`warm Back reuses loaded ${shuffle ? 'shuffled ' : ''}seasonal artwork and responds immediately${nativeRefreshing ? ' while populated native rows refresh' : ''}`, async ({ page }) => {
+  await fixture(page, shuffle);
   if (nativeRefreshing) await page.evaluate(() => {
     // Native Home refreshes progress after a movie closes but leaves its old
     // cards available. Those populated rows should remain useful during I/O.

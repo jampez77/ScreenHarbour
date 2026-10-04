@@ -127,7 +127,7 @@ for(const theme of ['halloween','christmas'] as const) test(`${theme} photoreal 
   page.on('response',response=>{if(response.url().includes('/assets/seasonal/')) {expect(response.status()).toBe(200);assets.push(response.url());}});
   await fixture(page,{theme,backgroundStyle:theme==='halloween'?'nightmare':'photoreal',frameStyle:'photoreal',coverStyle:'photoreal',reveal:'shutters'});
   const section=row(page,'Halloween'),cards=section.locator('.tvl-home-row-card');
-  await expect.poll(()=>assets.filter(url=>/-tv\.webp\?v=0\.2\.52$/.test(url)).length).toBeGreaterThanOrEqual(3);
+  await expect.poll(()=>assets.filter(url=>/-tv\.webp\?v=0\.2\.53$/.test(url)).length).toBeGreaterThanOrEqual(3);
   expect(assets.every(url=>new URL(url).origin===new URL(page.url()).origin)).toBe(true);
   await expect(cards.first().locator('.tvl-seasonal-full-door')).toHaveCount(2);
   await expect(cards.first().locator('.tvl-seasonal-window')).toHaveCount(1);
