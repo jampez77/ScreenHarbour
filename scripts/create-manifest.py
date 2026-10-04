@@ -30,7 +30,7 @@ for suffix, target in [('3', '12.0.0'), ('2', '10.11.0'), ('1', '10.10.7')]:
     assert archive.with_suffix('.zip.sha256').read_text().split()[0] == hashlib.sha256(data).hexdigest()
     versions.append({
         'version': version,
-        'changelog': 'Fixes a seasonal-row layout loop reproduced in Chromium 79. Older browsers round stored expansion sizes; repeatedly rewriting those values could prevent Home from painting even with static scenery. Sizing updates now settle while retaining seasonal artwork, expansion, doors, parallax and all saved settings. Physical LG webOS confirmation remains pending. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
+        'changelog': 'Reduces seasonal artwork download and decoded-pixel costs on TV with smaller photographic backgrounds, doors and frames. Seasonal backgrounds now load as rows approach the viewport, or immediately on focus, while row layout and items remain available. Desktop retains original artwork. Preserves all settings, seasonal effects and the Chromium 79 sizing-loop fix. Update the plugin, restart Jellyfin and fully reopen clients. Requires File Transformation.',
         'targetAbi': target,
         'sourceUrl': f'{release_url_prefix}v{release}/{archive.name}',
         # Jellyfin's catalogue protocol requires MD5; SHA-256 files are also published.
