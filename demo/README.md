@@ -14,12 +14,17 @@ The preview loads the same layout bundle used by Jellyfin, with a separate in-me
 | --- | --- |
 | [Halloween Home](https://jampez77.github.io/ScreenHarbour/?showcase=halloween&layout=desktop&featured=0#/home) | Focus a themed card to expand its scene, reveal its artwork and try the larger title and parallax. |
 | [Christmas Home](https://jampez77.github.io/ScreenHarbour/?showcase=christmas&layout=desktop&featured=0#/home) | Browse a festive scene with numbered advent doors that open on focus. |
+| [Dated Christmas Advent](https://jampez77.github.io/ScreenHarbour/?showcase=advent&layout=desktop&featured=0#/home) | Change **Preview date** from 1–24 December. Five sample films unlock one per day; the default 3 December leaves two doors closed. |
 | [Collection rows](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=desktop&featured=0#/mypreferencesmenu?cinemaCollections=1) | Add a row or seasonal group, pick source collections, set tabs/ranking/order and review the Home preview before saving. |
 | [Streaming services](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=desktop&featured=0#/mypreferencesmenu?cinemaProviders=1) | Change tile sizes and names, choose collection sources and preview the service’s content. |
 | [Loading screen](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=desktop&featured=0#/mypreferencesmenu?cinemaLoading=1) | Try six animations and set the title used across the interface. |
 | [TV Home](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=tv&featured=0#/home) | Browse saved rows with arrow keys, open an item and use Back to check return focus and position. |
 
 The default links use **Latest** (`showcase=latest`): sample ranked trending rows, streaming services and a Halloween/Christmas seasonal group that follows the local calendar. **Halloween** and **Christmas** use year-round sample dates so their effects can be tried in any month. Each example has its own demo settings and preserves edits between visits; opening it does not overwrite choices in the ordinary demo or another showcase.
+
+**Dated Christmas Advent** (`showcase=advent`) uses a genuine December 1–24 seasonal row with **Daily from season start**. Its separate, labelled preview calendar defaults to 3 December; choose another day using the control on Home, or add `adventDay=4` before the hash. This changes only seasonal visibility and door unlocking in that example. The browser clock, playback times and Live TV schedule stay unchanged. The five-film sample covers doors 1–5; a real collection can supply more films. The ordinary Christmas example continues to open every door on focus.
+
+The five fictional demo films have bundled 2:3 portrait posters. Seasonal rows and editor previews use these full-height posters inside their frames, while backdrop views retain their landscape photography.
 
 Collection-row editing is available in desktop mode. The editor preview works outside a row’s saved dates; Home only shows rows whose dates include today. Demo settings remain in this browser and do not change an installed Jellyfin account.
 

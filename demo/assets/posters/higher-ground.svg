@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600" role="img" aria-label="Higher Ground poster">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#365667"/><stop offset="1" stop-color="#142a38"/></linearGradient>
+    <linearGradient id="shade" x2="0" y2="1"><stop offset="0" stop-color="#142a38" stop-opacity="0"/><stop offset=".55" stop-color="#142a38" stop-opacity=".94"/><stop offset="1" stop-color="#142a38"/></linearGradient>
+    <pattern id="grain" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 1h2m1 3h2" stroke="#fff" stroke-opacity=".025"/></pattern>
+  </defs>
+  <path d="M0 0h400v600H0Z" fill="url(#sky)"/>
+  <circle cx="285" cy="162" r="54" fill="#e4ccb0"/><path d="m-40 394 150-189 127 173 53-118 150 160v180H0Z" fill="#80969b"/><path d="m-44 454 244-291 243 290v147H0Z" fill="#d6ddd4"/><path d="m200 163 35 143-29-10 40 100-53-27 18 142 232-58Z" fill="#7f9aa2"/><path d="m-44 454 130-77 63-102 18 54 33-166-31 232 27 33-28 172H0Z" fill="#435f71"/><path d="M0 475 106 411l107 52 78-47 109 47v137H0Z" fill="#213e51"/><path d="m0 489 111-63 107 57 69-51 113 49" fill="none" stroke="#78949c" stroke-width="2"/><circle cx="146" cy="383" r="4" fill="#e5b466"/><path d="m146 388-3 16m3-13 6 9m-8-1-4 12m4-7 6 8" stroke="#e5b466" stroke-width="3"/>
+  <path d="M0 387h400v213H0Z" fill="url(#shade)"/>
+  <path d="M0 0h400v600H0Z" fill="url(#grain)"/>
+  <path d="M19 20h362v560H19Z" fill="none" stroke="#eee4c9" stroke-opacity=".25"/>
+  <text x="200" y="58" fill="#eee4c9" font-family="Arial,sans-serif" font-size="9" letter-spacing="1.5" text-anchor="middle">THE HARDEST CLIMB IS COMING HOME</text>
+  <text fill="#eee4c9" font-family="Georgia,serif" font-size="41" letter-spacing="2" text-anchor="middle"><tspan x="200" y="474">HIGHER</tspan><tspan x="200" y="521">GROUND</tspan></text>
+  <path d="M159 552h82" stroke="#eee4c9" stroke-opacity=".5"/>
+  <text x="200" y="572" fill="#eee4c9" font-family="Arial,sans-serif" font-size="10" letter-spacing="3" text-anchor="middle">2023</text>
+</svg>

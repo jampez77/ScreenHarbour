@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600" role="img" aria-label="A Kind of Blue poster">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#173950"/><stop offset="1" stop-color="#121d34"/></linearGradient>
+    <linearGradient id="shade" x2="0" y2="1"><stop offset="0" stop-color="#121d34" stop-opacity="0"/><stop offset=".55" stop-color="#121d34" stop-opacity=".94"/><stop offset="1" stop-color="#121d34"/></linearGradient>
+    <pattern id="grain" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 1h2m1 3h2" stroke="#fff" stroke-opacity=".025"/></pattern>
+  </defs>
+  <path d="M0 0h400v600H0Z" fill="url(#sky)"/>
+  <circle cx="278" cy="195" r="53" fill="#d6c4a0"/><path d="M0 287 61 244 130 263 195 238 242 270 305 247 400 269v91H0Z" fill="#254c5e"/><path d="M0 302h400v298H0Z" fill="#215b76"/><path d="M0 340h400M0 376h400M0 415h400" stroke="#80a2a8" stroke-width="2" opacity=".35"/><path d="m278 304-61 201h123Z" fill="#cfb992" opacity=".14"/><path d="m72 361 251 5-30 36H102Z" fill="#122b3c"/><path d="M112 327h163v39H112Zm30-19h91v19h-91Z" fill="#afbab4"/><path d="M132 339h18v14h-18Zm34 0h18v14h-18Zm34 0h18v14h-18Zm34 0h18v14h-18Z" fill="#22475c"/><path d="m132 303 94 1M87 409q108 15 230 0" fill="none" stroke="#c7c5ab" stroke-width="2" opacity=".55"/><path d="M0 466q96-16 205 10t195-7v131H0Z" fill="#162e48"/>
+  <path d="M0 387h400v213H0Z" fill="url(#shade)"/>
+  <path d="M0 0h400v600H0Z" fill="url(#grain)"/>
+  <path d="M19 20h362v560H19Z" fill="none" stroke="#d8caad" stroke-opacity=".25"/>
+  <text x="200" y="58" fill="#d8caad" font-family="Arial,sans-serif" font-size="9" letter-spacing="1.5" text-anchor="middle">ONE LAST FERRY. A NEW BEGINNING.</text>
+  <text fill="#d8caad" font-family="Georgia,serif" font-size="41" letter-spacing="2" text-anchor="middle"><tspan x="200" y="474">A KIND</tspan><tspan x="200" y="521">OF BLUE</tspan></text>
+  <path d="M159 552h82" stroke="#d8caad" stroke-opacity=".5"/>
+  <text x="200" y="572" fill="#d8caad" font-family="Arial,sans-serif" font-size="10" letter-spacing="3" text-anchor="middle">2024</text>
+</svg>

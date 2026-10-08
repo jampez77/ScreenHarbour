@@ -8,7 +8,7 @@ import { seasonalRankImage } from './home-seasonal-rank';
 import { applySeasonalTitleFont } from './home-seasonal-font';
 import { cancelSeasonalMotion, changeSeasonalExpansion, seasonalHeaderClearance, settleSeasonalSelection } from './home-seasonal-motion';
 
-type AdventCard = { row: HomeCollectionRow; index: number; caption: HTMLElement | null; title: string; label: string; opensAt?: number; opensLabel?: string };
+type AdventCard = { row: HomeCollectionRow; index: number; caption: HTMLElement | null; title: string; label: string; opensAt?: number; opensLabel?: string; getDate?: () => Date | undefined };
 const adventCards = new WeakMap<HTMLElement, AdventCard>();
 const pendingMounts = new WeakMap<HTMLElement, () => void>();
 type SeasonalRowController = { suspended: boolean; suspend(): void; resume(): void };
@@ -24,7 +24,7 @@ export function resumeSeasonalRow(section: HTMLElement): void { seasonalRows.get
 function refreshAdventCard(card: HTMLElement, reveal = false): boolean {
   const data = adventCards.get(card);
   if (!data) return true;
-  const state = adventDoorState(data.row, data.index);
+  const state = adventDoorState(data.row, data.index, data.getDate?.());
   const locked = state.locked && !card.closest('.tvl-home-preview');
   if (locked && state.opens && data.opensAt !== state.opens.getTime()) {
     data.opensAt = state.opens.getTime();
@@ -56,7 +56,7 @@ function decoration(className: string, src: string): HTMLImageElement {
 }
 
 /** Ordinary decorations preserve item actions; future advent doors stay focusable but closed. */
-export function decorateSeasonalCard(card: HTMLElement, row: HomeCollectionRow, index: number): void {
+export function decorateSeasonalCard(card: HTMLElement, row: HomeCollectionRow, index: number, getDate?: () => Date | undefined): void {
   const appearance = row.appearance;
   const art = card.querySelector<HTMLElement>('.tvl-home-row-art');
   if (!appearance || !art) return;
@@ -78,7 +78,7 @@ export function decorateSeasonalCard(card: HTMLElement, row: HomeCollectionRow, 
         decoration('tvl-seasonal-advent-number', seasonalRankImage(index + 1, 'christmas', appearance.coverStyle)));
       cover.append(flap);
       const caption = card.querySelector<HTMLElement>('.tvl-home-row-caption');
-      adventCards.set(card, { row, index, caption, title: caption?.textContent || '', label: card.getAttribute('aria-label') || '' });
+      adventCards.set(card, { row, index, caption, title: caption?.textContent || '', label: card.getAttribute('aria-label') || '', getDate });
       card.dataset.adventDay = String(index + 1);
       refreshAdventCard(card);
       // Capture before the normal card action. aria-disabled deliberately does

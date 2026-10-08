@@ -12,6 +12,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .demo-switcher a:focus-visible { outline: 2px solid white; outline-offset: 2px; }
 .demo-switcher { max-width:calc(100vw - 24px); overflow-x:auto; scrollbar-width:none; }
 .demo-switcher::-webkit-scrollbar { display:none; }
+.demo-advent-calendar { position:fixed; right:24px; bottom:20px; z-index:10010; max-width:calc(100vw - 48px); padding:14px 18px; border:1px solid #d7c28a70; border-radius:10px; background:#17201ef5; color:#f5f5f2; box-shadow:0 4px 24px #0005; }
+.demo-advent-calendar label { display:flex; align-items:center; gap:14px; font-size:14px; font-weight:600; }
+.demo-advent-calendar select { min-height:36px; padding:6px 10px; border:1px solid #d7c28a70; border-radius:5px; background:#27332b; color:inherit; font:inherit; }
+.demo-advent-calendar select:focus { outline:2px solid #f5f5f2; outline-offset:3px; }
+.demo-advent-calendar>span { display:block; margin-top:8px; color:#b9c4bd; font-size:12px; }
 .demo-native-page { min-height: 100vh; padding: 42px 6vw; background: linear-gradient(90deg, #08090bef 3%, #08090b86 60%, #08090b33), linear-gradient(0deg, #08090b 0%, transparent 85%), url('assets/mountains.jpg') center / cover; }
 .demo-native-brand { font-weight: 700; font-size: 14px; letter-spacing: 2px; }
 .demo-native-brand span:not([data-tvl-brand]) { margin-left: 16px; color: #a0a3aa; font-size: 9px; letter-spacing: 1.5px; }

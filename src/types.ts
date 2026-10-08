@@ -71,6 +71,8 @@ export interface MediaApi extends BrowseApi {
   homeCollections?: HomeCollectionTransport;
   providerHomes?: ProviderHomesTransport;
   loadingScreen?: LoadingScreenTransport;
+  /** Optional seasonal-calendar preview; omitted by real servers. Never changes the wall clock. */
+  getSeasonalDate?(): Date;
   getHomeLibraryExclusions?(): Promise<string[]>;
   getProviderDirectory?(): Promise<ProviderDirectory>;
   getProviderItems?(provider: ProviderId, query: ProviderItemsQuery): Promise<ProviderItemsPage>;

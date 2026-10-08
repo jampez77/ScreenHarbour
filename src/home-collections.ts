@@ -130,6 +130,10 @@ export class HomeCollections {
   private providerLastSync = 0;
   private providerRefreshPending = false;
 
+  private activeRows(): HomeCollectionRow[] {
+    return activeHomeRows(this.settings, this.api.getSeasonalDate?.());
+  }
+
   constructor(private api: MediaApi, private navigate: (id: string) => void, private restoreFocus?: string,
     private openProvider?: (id: ProviderId) => void) {
     this.store = createHomeCollectionStore(api); this.key = this.store.key; this.settings = this.store.cached;
@@ -159,7 +163,7 @@ export class HomeCollections {
     this.accountIdentity = JSON.stringify([api.serverId, api.userId]);
     this.removeWatchlist = subscribeWatchlist(api, () => {
       this.watchlist = undefined;
-      if (!activeHomeRows(this.settings).some(row => row.kind === 'watchlist')) return;
+      if (!this.activeRows().some(row => row.kind === 'watchlist')) return;
       const active = document.activeElement as HTMLElement | null;
       if (this.owns(active)) this.restoreFocus = active?.dataset.focusId;
       void this.render();
@@ -273,7 +277,7 @@ export class HomeCollections {
       this.staged ||= { revision: this.revision, inputRevision: 0, sections: this.sections };
     }
     this.observe(); this.channelArtwork.resume();
-    const rows = activeHomeRows(this.settings);
+    const rows = this.activeRows();
     if (this.pendingRender || JSON.stringify(rows.map(row => row.id)) !== this.activeRowIds
       || !continuing && rows.some(row => row.shuffle && !dailyAdvent(row))) void this.render();
     else this.scheduleSeasonCheck();
@@ -443,7 +447,7 @@ export class HomeCollections {
         // its current horizontal position visible instead of relying on its slot.
         const rowId = target?.closest<HTMLElement>('[data-home-row]')?.dataset.homeRow;
         const cards = target?.closest<HTMLElement>('.tvl-home-row-cards');
-        if (target && cards && activeHomeRows(this.settings).some(row => row.id === rowId && row.shuffle)) {
+        if (target && cards && this.activeRows().some(row => row.id === rowId && row.shuffle)) {
           const item = target.getBoundingClientRect(), strip = cards.getBoundingClientRect();
           if (item.left < strip.left + 8) cards.scrollLeft += item.left - strip.left - 8;
           else if (item.right > strip.right - 8) cards.scrollLeft += item.right - strip.right + 8;
@@ -593,7 +597,7 @@ export class HomeCollections {
     void this.refreshLibraryExclusions(force);
     if (this.initialRefreshPending) { this.providerRefreshPending ||= force; return; }
     void this.refreshProviders(force);
-    if (!this.store.synced && activeHomeRows(this.settings).some(row => row.kind === 'watchlist') && (force || Date.now() - this.lastWatchlistSync >= 5_000)) {
+    if (!this.store.synced && this.activeRows().some(row => row.kind === 'watchlist') && (force || Date.now() - this.lastWatchlistSync >= 5_000)) {
       this.lastWatchlistSync = Date.now();
       if (await this.refreshWatchlist() && !this.disposed) await this.render();
     }
@@ -642,7 +646,7 @@ export class HomeCollections {
   private refreshSeasons = (): void => {
     if (this.disposed || this.suspended) return;
     this.sections.forEach(section => refreshSeasonalDate(section.element));
-    const ids = JSON.stringify(activeHomeRows(this.settings).map(row => row.id));
+    const ids = JSON.stringify(this.activeRows().map(row => row.id));
     if (ids !== this.activeRowIds) void this.render();
     else this.scheduleSeasonCheck();
   };
@@ -689,7 +693,7 @@ export class HomeCollections {
     return this.watchlist.promise;
   }
   private async refreshWatchlist(): Promise<boolean> {
-    if (!activeHomeRows(this.settings).some(row => row.kind === 'watchlist')) return false;
+    if (!this.activeRows().some(row => row.kind === 'watchlist')) return false;
     const before = this.watchlist;
     try {
       const items = await getAllWatchlistItems(this.api);
@@ -717,7 +721,7 @@ export class HomeCollections {
       this.collectionList(true).then(items => JSON.stringify(items) !== before).catch(() => false),
       this.refreshItems()
     ]);
-    return listChanged && activeHomeRows(this.settings).length > 0 || membersChanged;
+    return listChanged && this.activeRows().length > 0 || membersChanged;
   }
 
   private refreshItems(): Promise<boolean> {
@@ -733,7 +737,7 @@ export class HomeCollections {
     // Membership and source order can change without a settings revision (for
     // example after SmartLists refreshes). Revalidate visited sources quietly;
     // keep successful data during failures and leave unchanged DOM/focus alone.
-    const sources = new Set(activeHomeRows(this.settings).filter(row => row.kind === 'items').flatMap(row => homeCollectionTabs(row).map(tab => tab.collectionId)));
+    const sources = new Set(this.activeRows().filter(row => row.kind === 'items').flatMap(row => homeCollectionTabs(row).map(tab => tab.collectionId)));
     let changed = false;
     const pending = Array.from(this.items).filter(([id, entry]) => {
       if (!sources.has(id)) { this.items.delete(id); return false; }
@@ -996,7 +1000,7 @@ export class HomeCollections {
     if (this.suspended) { this.pendingRender = true; return; }
     this.pendingRender = false;
     const revision = ++this.revision;
-    const rows = activeHomeRows(this.settings);
+    const rows = this.activeRows();
     this.activeRowIds = JSON.stringify(rows.map(row => row.id));
     this.scheduleSeasonCheck();
     const inputRevision = this.inputRevision;
