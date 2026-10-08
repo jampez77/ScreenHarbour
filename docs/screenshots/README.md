@@ -1,9 +1,12 @@
 # README screenshots
 
-These are unretouched historical screenshots of ScreenHarbour’s predecessor, Jellyfin Cinema, installed in a real Jellyfin library in desktop display mode. They were captured on 27 September 2026 before the rebrand and may still show the Cinema name. The layouts remain representative of ScreenHarbour. The Home service and trending views use the browser’s 1728 × 816 viewport; the other captures use 1728 × 872. They use real movies, shows and library artwork. They are separate from the hosted demo, which uses fictional data and simulated playback.
+The media gallery contains unretouched historical screenshots of ScreenHarbour’s predecessor, Jellyfin Cinema, installed in a real Jellyfin library in desktop display mode. They were captured on 27 September 2026 before the rebrand and may still show the Cinema name. The layouts remain representative of ScreenHarbour. The Home service and trending views use the browser’s 1728 × 816 viewport; the other library captures use 1728 × 872. They use real movies, shows and library artwork. They are separate from the hosted demo, which uses fictional data and simulated playback.
+
+`demo-settings.jpg` was captured from the updated standalone demo on 9 October 2026 at 1728 × 816. It shows the working Settings hub and contains no personal server or library data.
 
 | File | Screen |
 | --- | --- |
+| `demo-settings.jpg` | Current demo Settings hub with Collection rows, Streaming services and Loading screen cards |
 | `home-services.jpg` | Home library tiles and streaming-service shortcuts |
 | `home-trending.jpg` | Home’s Netflix Trending Today collection with ranked posters, Movies and Shows tabs, and the adjacent Live TV row |
 | `home.jpg` | Home with the optional Jellyfin Featured plugin and library tiles |

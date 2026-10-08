@@ -8,6 +8,8 @@ on:
       - 'src/**'
       - 'demo/**'
       - 'assets/providers/**'
+      - 'assets/loading/**'
+      - 'assets/seasonal/**'
       - 'assets/seasonal-fonts/**'
       - 'scripts/build*.mjs'
       - 'package.json'
