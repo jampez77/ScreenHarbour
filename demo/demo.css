@@ -9,7 +9,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .demo-switcher a { border-radius: 99px; padding: 8px 13px; text-decoration: none; font-size: 11px; line-height: 14px; font-weight: 600; color: #aeb0b7; transition: background .18s, color .18s; }
 .demo-switcher a:hover { color: #fff; background: #ffffff0e; }
 .demo-switcher a[aria-current="page"] { color: #17181d; background: #ececec; }
-.demo-switcher a:focus-visible { outline: 2px solid white; outline-offset: 4px; }
+.demo-switcher a:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.demo-switcher { max-width:calc(100vw - 24px); overflow-x:auto; scrollbar-width:none; }
+.demo-switcher::-webkit-scrollbar { display:none; }
 .demo-native-page { min-height: 100vh; padding: 42px 6vw; background: linear-gradient(90deg, #08090bef 3%, #08090b86 60%, #08090b33), linear-gradient(0deg, #08090b 0%, transparent 85%), url('assets/mountains.jpg') center / cover; }
 .demo-native-brand { font-weight: 700; font-size: 14px; letter-spacing: 2px; }
 .demo-native-brand span:not([data-tvl-brand]) { margin-left: 16px; color: #a0a3aa; font-size: 9px; letter-spacing: 1.5px; }
@@ -110,3 +112,45 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .demo-featured-actions button,.demo-featured-actions a { padding:15px 26px; border:0; border-radius:5px; background:#f5f4f0; color:#16171a; text-decoration:none; font:600 16px Inter,"Helvetica Neue",Arial,sans-serif; margin-right:14px; cursor:pointer; }
 .demo-featured-actions .demo-featured-details { background:#ffffff25; color:#fff; }
 .demo-featured-actions :focus { outline:3px solid #fff; outline-offset:4px; }
+
+/* The demo has no Jellyfin stylesheet or Material icon font. Supply the native
+   Settings shell here without changing the real client's settings layout. */
+.demo-settings-page { min-height:100vh; padding:128px max(5.5vw,24px) 64px; }
+.demo-settings-header,.demo-settings-preview,.demo-settings-page .readOnlyContent { width:100%; max-width:1120px; margin:0 auto; }
+.demo-settings-header { display:flex; align-items:flex-start; gap:32px; margin-bottom:46px; }
+.demo-settings-header>div { flex:1; }
+.demo-settings-eyebrow { margin:0 0 14px; color:#b9c4bd; font-size:11px; font-weight:650; letter-spacing:.18em; }
+.demo-settings-header h1 { margin:0 0 16px; font-size:clamp(36px,4vw,60px); font-weight:600; letter-spacing:-.045em; line-height:1.1; }
+.demo-settings-description { max-width:650px; margin:0; color:#b9c4bd; font-size:16px; line-height:1.65; }
+.demo-settings-home,.demo-settings-option { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:12px 18px; border:1px solid #d3e7de35; border-radius:7px; background:#19241d; color:#f5f5f2; text-decoration:none; font-size:14px; line-height:1.4; }
+.demo-settings-home { flex:none; margin-top:28px; }
+.demo-settings-home:hover,.demo-settings-option:hover { background:#293a30; }
+.demo-settings-home:focus,.demo-settings-option:focus { outline:2px solid #f2faf4; outline-offset:4px; }
+.demo-settings-option[aria-current] { background:#f5f5f2; border-color:#f5f5f2; color:#101112; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .readOnlyContent { display:block; max-width:1120px; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .readOnlyContent>.verticalSection.tvl-settings-providers { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .tvl-settings-providers>h2 { grid-column:1/-1; margin:0 0 4px; font-size:17px; letter-spacing:.05em; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .tvl-settings-providers>.listItem-border { display:block; margin:0 !important; min-width:0; height:100%; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .listItem { display:flex; flex-direction:column; align-items:flex-start; gap:22px; min-height:204px; padding:24px !important; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .listItemBodyText { font-size:20px; font-weight:600; line-height:1.3; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .listItemBodyText.secondary { margin-top:8px; color:#b9c4bd; font-size:14px; font-weight:400; line-height:1.5; }
+.tvl-native-settings #myPreferencesMenuPage.demo-settings-page .listItemIcon { display:grid; place-items:center; flex:none; width:42px; height:42px; border-radius:9px; background:#b9d0c214; font-size:0; }
+.demo-settings-page .listItemIcon::before { content:''; display:block; width:24px; height:24px; background:currentColor; -webkit-mask:var(--demo-settings-icon) center/contain no-repeat; mask:var(--demo-settings-icon) center/contain no-repeat; }
+.demo-settings-page .tvl-settings-collections-link { --demo-settings-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' d='M4 7h16v13H4zM7 3h13M2 4v13M15 7v7l-2-1.5-2 1.5V7'/%3E%3C/svg%3E"); }
+.demo-settings-page .tvl-settings-provider-link { --demo-settings-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' d='M3 4h18v13H3zM8 21h8M12 17v4M10 8l5 2.5-5 2.5z'/%3E%3C/svg%3E"); }
+.demo-settings-page .tvl-settings-loading-link { --demo-settings-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.7'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='7' r='1.4'/%3E%3Ccircle cx='7' cy='12' r='1.4'/%3E%3Ccircle cx='17' cy='12' r='1.4'/%3E%3Ccircle cx='12' cy='17' r='1.4'/%3E%3C/g%3E%3C/svg%3E"); }
+.demo-settings-preview { margin-top:44px; padding-top:28px; border-top:1px solid #d3e7de20; }
+.demo-settings-preview h2 { margin:0 0 10px; font-size:23px; font-weight:600; letter-spacing:-.02em; }
+.demo-settings-preview h3 { margin:28px 0 8px; font-size:17px; font-weight:600; }
+.demo-settings-preview p { margin:0 0 16px; color:#b9c4bd; font-size:14px; line-height:1.6; }
+.demo-settings-options { display:flex; flex-wrap:wrap; gap:10px; }
+@media(max-width:1000px) {
+  .tvl-native-settings #myPreferencesMenuPage.demo-settings-page .readOnlyContent>.verticalSection.tvl-settings-providers { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:650px) {
+  .demo-settings-page { padding-top:108px; }
+  .demo-settings-header { flex-direction:column; gap:18px; margin-bottom:32px; }
+  .demo-settings-home { margin-top:0; }
+  .tvl-native-settings #myPreferencesMenuPage.demo-settings-page .readOnlyContent>.verticalSection.tvl-settings-providers { grid-template-columns:minmax(0,1fr); }
+  .tvl-native-settings #myPreferencesMenuPage.demo-settings-page .listItem { flex-direction:row; align-items:center; gap:18px; min-height:120px; padding:20px !important; }
+}

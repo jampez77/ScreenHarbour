@@ -5,10 +5,14 @@ import { defaultProviderHomes, defaultProviderConfig, parseProviderHomes, provid
 import type { ProviderItemsQuery, ProviderItemsPage } from '../src/provider-data';
 import { orderHomeItems } from '../src/home-collection-settings';
 import { notifyWatchlistChanged } from '../src/watchlist';
+import { demoUserForShowcase, readDemoShowcase, seedDemoShowcase, showcaseCollectionId } from './showcases';
 
 // This file belongs to the preview only. It is never included in the installer bundle.
 const MINUTE = 60 * 10_000_000;
 const scenario = new URLSearchParams(location.search).get('scenario');
+const showcase = readDemoShowcase(location.search);
+const demoUserId = demoUserForShowcase(showcase);
+seedDemoShowcase(localStorage, location.origin, showcase);
 if (new URLSearchParams(location.search).get('layout') === 'desktop') document.body.classList.replace('layout-tv', 'layout-desktop');
 const library = new Map<string, Item>();
 const artwork = new Map<string, string>();
@@ -162,6 +166,11 @@ register({ Id:'library-movies', Type:'CollectionFolder', CollectionType:'movies'
 register({ Id:'library-tv', Type:'CollectionFolder', CollectionType:'tvshows', Name:'TV Shows' }, 'mountains');
 register({ Id:'collection-coast', Type:'BoxSet', Name:'Coastal Stories', Overview:'Journeys shaped by the sea. Discover stories of homecoming, chance encounters and life along the coast.', ChildCount:2 }, 'ocean');
 register({ Id:'collection-wilderness', Type:'BoxSet', Name:'Into the Wilderness', Overview:'Step beyond the familiar. Mountain mysteries and open-country adventures from your library.', ChildCount:3 }, 'mountains');
+if (showcase) {
+  collectionMembers.set(showcaseCollectionId, movieIds.slice());
+  register({ Id:showcaseCollectionId, Type:'BoxSet', Name:'Demo film selection',
+    Overview:'Five fictional films for exploring ranked rows, seasonal artwork and opening doors.', ChildCount:movieIds.length }, 'forest');
+}
 
 // Fictional memberships make full catalogues visibly different from weekly charts.
 const providerCatalogues: Record<ProviderBrandId, { movies: string[]; shows: string[] }> = {
@@ -184,12 +193,12 @@ for (const brand of providerBrands.filter(brand => !['bbc','itvx','channel4'].in
 }
 // The preview account has explicitly selected its fictional chart collections.
 // Production settings never infer a collection ID from a display name.
-if (!localStorage.getItem(providerHomesKey(location.origin, 'demo'))) {
+if (!localStorage.getItem(providerHomesKey(location.origin, demoUserId))) {
   const settings = defaultProviderHomes();
   for (const provider of settings.providers) for (const row of provider.rows) {
     if (row.source === 'trending-movies' || row.source === 'trending-shows') row.collectionId = `provider-chart-${provider.id}-${row.source === 'trending-movies' ? 'movies' : 'shows'}`;
   }
-  localStorage.setItem(providerHomesKey(location.origin, 'demo'), JSON.stringify(settings));
+  localStorage.setItem(providerHomesKey(location.origin, demoUserId), JSON.stringify(settings));
 }
 
 const movieGenres = [...new Set(movieIds.flatMap(id=>library.get(id)!.Genres || []))].sort().map(name=>({Id:`genre-${name.toLowerCase()}`,Name:name,Type:'Genre'}));
@@ -227,7 +236,7 @@ const playlistMembers = new Map<string, Item[]>([
   ['playlist-night', [songs[3], songs[4]].map((item, index) => ({...item, PlaylistItemId:`night-entry-${index + 1}`}))],
 ]);
 // Preview-only storage belongs to the fictional demo account, never a Jellyfin user.
-const watchlistStorageKey = 'screenharbour-demo:demo:trailer-watchlist';
+const watchlistStorageKey = `screenharbour-demo:${demoUserId}:trailer-watchlist`;
 const watchlistId = 'playlist-demo-watchlist';
 const watchlistItems = new Set<string>();
 try {
@@ -513,6 +522,7 @@ function providerPage(config: ProviderHomeConfig | undefined, query: ProviderIte
     Status: configured ? 'ready' : 'unavailable', Region: 'GB', UpdatedAt: new Date().toISOString(), MissingIds: 0, FailedIds: 0 };
 }
 const api: MediaApi = {
+  ...(showcase ? { userId: demoUserId } : {}),
   getPlaybackContext: () => respond(() => cinemaPlayback ? { ...cinemaPlayback, Queue:cinemaPlayback.Queue.map(entry => ({...entry})) } : null),
   getTrailerDetails: expected => respond(() => {
     const model = trailerActions(expected);
@@ -567,7 +577,7 @@ const api: MediaApi = {
   }),
   getProviderItems: (provider, query) => respond(() => {
     let settings = defaultProviderHomes();
-    try { const raw = localStorage.getItem(providerHomesKey(location.origin, 'demo')); if (raw) settings = parseProviderHomes(JSON.parse(raw)); } catch { /* Use preview defaults. */ }
+    try { const raw = localStorage.getItem(providerHomesKey(location.origin, demoUserId)); if (raw) settings = parseProviderHomes(JSON.parse(raw)); } catch { /* Use preview defaults. */ }
     return providerPage(settings.providers.find(config => config.id === provider && config.enabled), query);
   }),
   previewProviderItems: (provider, query) => respond(() => providerPage(provider, query)),
@@ -716,11 +726,31 @@ const homeSections=el('div','sections homeSectionsContainer');homeTab.append(hom
 const favoritesTab=el('section','tabContent pageTabContent hide');favoritesTab.id='favoritesTab';favoritesTab.dataset.index='1';favoritesTab.setAttribute('aria-label','Favourites');
 favoritesTab.append(el('h1','','Favourites'),el('p','','Your saved films, shows and albums.'));
 nativeHome.append(homeTab,favoritesTab);document.body.insertBefore(nativeHeader,nativePage);document.body.insertBefore(nativeHome,nativePage);
-const nativeSettings = el('main', 'page libraryPage userPreferencesPage hide'); nativeSettings.id = 'myPreferencesMenuPage';
+const nativeSettings = el('main', 'page libraryPage userPreferencesPage demo-settings-page hide'); nativeSettings.id = 'myPreferencesMenuPage';
+const settingsHeader = el('header', 'demo-settings-header');
+const settingsHeading = el('div');
+settingsHeading.append(el('p', 'demo-settings-eyebrow', 'MAKE IT YOURS'), el('h1', '', 'Settings'),
+  el('p', 'demo-settings-description', 'Try your own Home rows, streaming services and loading screen. Preview changes stay in this browser.'));
+const settingsHome = el('a', 'demo-settings-home', 'Back to Home'); settingsHome.href = '#/home';
+settingsHeader.append(settingsHeading, settingsHome);
 const settingsContent = el('div', 'readOnlyContent');
-settingsContent.append(el('h1', '', 'Settings'));
-const settingsHome = el('a', 'emby-button', 'Home'); settingsHome.href = '#/home'; settingsContent.append(settingsHome);
-nativeSettings.append(settingsContent); document.body.insertBefore(nativeSettings, nativePage);
+const settingsPreview = el('section', 'demo-settings-preview'); settingsPreview.setAttribute('aria-label', 'Preview options');
+settingsPreview.append(el('h2', '', 'Explore the preview'));
+const settingsLayouts = el('div', 'demo-settings-options'); settingsLayouts.setAttribute('aria-label', 'Preview layout');
+for (const [layout, name] of [['desktop', 'Desktop preview'], ['tv', 'TV preview']]) {
+  const url = new URL(location.href); url.searchParams.set('layout', layout); url.hash = '/mypreferencesmenu';
+  const link = el('a', 'demo-settings-option', name); link.href = url.href;
+  if ((new URLSearchParams(location.search).get('layout') === 'desktop' ? 'desktop' : 'tv') === layout) link.setAttribute('aria-current', 'true');
+  settingsLayouts.append(link);
+}
+settingsPreview.append(el('p', '', 'Collection rows are configured in the desktop layout. Switch to TV to try the same saved choices.'), settingsLayouts);
+const settingsShowcases = el('div', 'demo-settings-options'); settingsShowcases.setAttribute('aria-label', 'Home examples');
+for (const [showcase, name] of [['latest', 'Latest features Home'], ['halloween', 'Halloween Home'], ['christmas', 'Christmas Home']]) {
+  const url = new URL(location.href); url.searchParams.set('showcase', showcase); url.searchParams.set('featured', '0'); url.hash = '/home';
+  const link = el('a', 'demo-settings-option', name); link.href = url.href; settingsShowcases.append(link);
+}
+settingsPreview.append(el('h3', '', 'Home examples'), el('p', '', 'Explore themed backgrounds, frames and opening doors with sample Home rows.'), settingsShowcases);
+nativeSettings.append(settingsHeader, settingsContent, settingsPreview); document.body.insertBefore(nativeSettings, nativePage);
 function selectNativeHomeTab(index:number,notify=false):void{
   const previousIndex=homeTab.classList.contains('is-active')?0:1;
   homeTab.classList.toggle('hide',index!==0);homeTab.classList.toggle('is-active',index===0);
@@ -863,9 +893,9 @@ function syncRoute() {
     const items=el('div','itemsContainer');items.dataset.parentid=params.get('parentId')||'';content.append(items);replace(nativePage,content);
   } else if (nativePage.querySelector('.demo-collection-content')) nativePage.innerHTML=originalNativeContent;
   const recordingPage = guide && params.get('tab')==='3' || /^#\/list(?:\?|$)/.test(location.hash) && params.get('type')==='Recordings';
-  const type = home?'home':music||playlists||['MusicAlbum','MusicArtist','Audio','Playlist'].includes(current?.Type||'')?'music':recordingPage||recordings.some(item=>item.Id===current?.Id)?'recordings':collection||collectionList?'collections':movies?'movie':guide ? 'live' : current?.Type === 'Movie' ? 'movie' : current?.Type === 'TvChannel' || current?.Type === 'Program' ? 'live' : 'series';
+  const type = preferences?'settings':home?'home':music||playlists||['MusicAlbum','MusicArtist','Audio','Playlist'].includes(current?.Type||'')?'music':recordingPage||recordings.some(item=>item.Id===current?.Id)?'recordings':collection||collectionList?'collections':movies?'movie':guide ? 'live' : current?.Type === 'Movie' ? 'movie' : current?.Type === 'TvChannel' || current?.Type === 'Program' ? 'live' : 'series';
   document.querySelectorAll<HTMLAnchorElement>('[data-demo-type]').forEach((link) => {
-    if (link.dataset.demoType === type && (home || music || playlists || guide || movies || shows || recordingPage || collectionList || location.hash.startsWith('#/details'))) link.setAttribute('aria-current', 'page');
+    if (link.dataset.demoType === type && (preferences || home || music || playlists || guide || movies || shows || recordingPage || collectionList || location.hash.startsWith('#/details'))) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   });
   if (!location.hash.startsWith('#/video')) closePlayer();
