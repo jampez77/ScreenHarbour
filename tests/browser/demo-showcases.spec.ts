@@ -5,6 +5,29 @@ import { openCollectionRowsFromSettings } from './collection-rows-fixture';
 const home = (page: Page) => page.locator('#homeTab');
 const themed = (page: Page, theme: string) => home(page).locator(`[data-home-row="showcase-${theme}"]`);
 
+test('dated Christmas Advent unlocks by preview day while the actual calendar remains unchanged', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-07-15T12:00:00Z') });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?featured=0&layout=desktop&showcase=advent#/home');
+  const row = themed(page, 'advent'), cards = row.locator('.tvl-home-row-card');
+  await expect(cards).toHaveCount(5);
+  await expect(row.locator('[data-advent-locked="false"]')).toHaveCount(3);
+  await expect(row.locator('[data-advent-locked="true"]')).toHaveCount(2);
+  await cards.nth(3).focus();
+  await expect(cards.nth(3)).not.toHaveClass(/tvl-seasonal-item-open/);
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/home$/);
+  await page.getByLabel('Advent preview date', { exact: true }).selectOption('4');
+  await expect(row.locator('[data-advent-locked="false"]')).toHaveCount(4);
+  await expect(row.locator('[data-advent-locked="true"]')).toHaveCount(1);
+  await cards.nth(3).focus();
+  await expect(cards.nth(3)).toHaveClass(/tvl-seasonal-item-open/);
+  expect(await page.evaluate(() => new Date().getMonth())).toBe(6);
+  await cards.nth(3).click();
+  await expect(page.getByRole('dialog', { name: / details$/ })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Advent demo calendar' })).toBeHidden();
+});
+
 test('latest showcase changes only the seasonal row with the calendar, keeping services and trending films', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-09T12:00:00Z') });
   await page.goto('/?featured=0&providers=1&layout=desktop&showcase=latest#/home');

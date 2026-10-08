@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600" role="img" aria-label="The Shape of Silence poster">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#142e2c"/><stop offset="1" stop-color="#091d1c"/></linearGradient>
+    <linearGradient id="shade" x2="0" y2="1"><stop offset="0" stop-color="#091d1c" stop-opacity="0"/><stop offset=".55" stop-color="#091d1c" stop-opacity=".94"/><stop offset="1" stop-color="#091d1c"/></linearGradient>
+    <pattern id="grain" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 1h2m1 3h2" stroke="#fff" stroke-opacity=".025"/></pattern>
+  </defs>
+  <path d="M0 0h400v600H0Z" fill="url(#sky)"/>
+  <circle cx="210" cy="197" r="83" fill="#aebfaa" opacity=".17"/><g fill="#315247"><path d="m30 125-54 241H84Zm76 7L39 406h134Zm205-18-61 261h122Zm75 82-53 224h106Z"/></g><path d="m153 326 47-42 54 42v68H153Z" fill="#0a1616"/><path d="m140 327 60-57 68 57" fill="none" stroke="#7e9980" stroke-width="4"/><path d="M183 342h33v36h-33Z" fill="#d8b875"/><path d="M199 342v36m-16-18h33" stroke="#283e32" stroke-width="4"/><g fill="#0a2221"><path d="M0 80h18v520H0Zm73-39h19v559H73Zm225 10h25v549h-25Zm76 36h26v513h-26Z"/><path d="m81 179-41 85 42-35 40 43Zm228 26-45 89 46-40 51 47Z"/></g><path d="M0 414q100-29 200-16t200 11v191H0Z" fill="#0b2422"/>
+  <path d="M0 387h400v213H0Z" fill="url(#shade)"/>
+  <path d="M0 0h400v600H0Z" fill="url(#grain)"/>
+  <path d="M19 20h362v560H19Z" fill="none" stroke="#d2d7b0" stroke-opacity=".25"/>
+  <text x="200" y="58" fill="#d2d7b0" font-family="Arial,sans-serif" font-size="9" letter-spacing="1.5" text-anchor="middle">SOME STORIES ARE NEVER SPOKEN</text>
+  <text fill="#d2d7b0" font-family="Georgia,serif" font-size="41" letter-spacing="2" text-anchor="middle"><tspan x="200" y="474">THE SHAPE</tspan><tspan x="200" y="521">OF SILENCE</tspan></text>
+  <path d="M159 552h82" stroke="#d2d7b0" stroke-opacity=".5"/>
+  <text x="200" y="572" fill="#d2d7b0" font-family="Arial,sans-serif" font-size="10" letter-spacing="3" text-anchor="middle">2024</text>
+</svg>

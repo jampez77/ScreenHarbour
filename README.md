@@ -26,6 +26,7 @@ Explore Home, movie details, seasons and episodes, streaming-service pages, coll
 | --- | --- |
 | [Collection rows](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=desktop&featured=0#/mypreferencesmenu?cinemaCollections=1) | Choose collections, arrange tabs and items, add ranking or shuffle, and place rows among native Home sections. |
 | [Halloween](https://jampez77.github.io/ScreenHarbour/?showcase=halloween&layout=desktop&featured=0#/home) · [Christmas](https://jampez77.github.io/ScreenHarbour/?showcase=christmas&layout=desktop&featured=0#/home) | Ready-made seasonal scenes with full-screen focus expansion, themed headings, scenery and opening doors. These examples stay visible all year. |
+| [Dated Christmas Advent](https://jampez77.github.io/ScreenHarbour/?showcase=advent&layout=desktop&featured=0#/home) | A December 1–24 row with five sample films. Change the preview date to see one numbered door unlock each day; future doors stay closed. |
 | [Streaming services](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=desktop&featured=0#/mypreferencesmenu?cinemaProviders=1) | Resize or rename tiles, choose their colours and collection sources, and preview their Home pages. |
 | [Loading screen](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=desktop&featured=0#/mypreferencesmenu?cinemaLoading=1) | Compare six animations and set the title used throughout the interface. |
 
@@ -36,6 +37,8 @@ The demo follows the latest code on `main`, which may be ahead of an installed r
 [![ScreenHarbour demo Settings with Collection rows, Streaming services and Loading screen cards](docs/screenshots/demo-settings.jpg)](docs/screenshots/demo-settings.jpg)
 
 The [demo Settings hub](https://jampez77.github.io/ScreenHarbour/?showcase=latest&layout=desktop&featured=0#/mypreferencesmenu) brings the three editors together, with desktop/TV preview switches and seasonal examples.
+
+Collection and seasonal film cards use dedicated portrait posters, including inside frames and doors. The Advent example starts at a clearly labelled **3 December** preview date, so its daily unlocks can be tried at any time of year without changing your clock.
 
 ## Screenshots
 

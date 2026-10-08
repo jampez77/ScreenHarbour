@@ -5,7 +5,7 @@ import { defaultProviderHomes, defaultProviderConfig, parseProviderHomes, provid
 import type { ProviderItemsQuery, ProviderItemsPage } from '../src/provider-data';
 import { orderHomeItems } from '../src/home-collection-settings';
 import { notifyWatchlistChanged } from '../src/watchlist';
-import { demoUserForShowcase, readDemoShowcase, seedDemoShowcase, showcaseCollectionId } from './showcases';
+import { demoAdventDate, demoUserForShowcase, readDemoShowcase, seedDemoShowcase, showcaseCollectionId } from './showcases';
 
 // This file belongs to the preview only. It is never included in the installer bundle.
 const MINUTE = 60 * 10_000_000;
@@ -20,6 +20,15 @@ const artwork = new Map<string, string>();
 // the same artwork paths, including the direct /demo/index.html entry point.
 const assetBase = new URL('../demo/assets/', (document.currentScript as HTMLScriptElement).src).pathname;
 const asset = (name: string) => `${assetBase}${name}.jpg`;
+// Real servers distinguish portrait primary artwork from landscape thumbnails.
+// Keep that distinction in the fixture, especially inside seasonal door frames.
+const moviePosters: Record<string, string> = {
+  'movie-tide': 'after-the-tide',
+  'movie-silence': 'the-shape-of-silence',
+  'movie-higher': 'higher-ground',
+  'movie-wild': 'where-the-wild-things-wait',
+  'movie-blue': 'a-kind-of-blue',
+};
 const seasons: Item[] = [];
 const episodes = new Map<string, Item[]>();
 const channels: Item[] = [];
@@ -523,6 +532,7 @@ function providerPage(config: ProviderHomeConfig | undefined, query: ProviderIte
 }
 const api: MediaApi = {
   ...(showcase ? { userId: demoUserId } : {}),
+  ...(showcase === 'advent' ? { getSeasonalDate: () => demoAdventDate(location.search) } : {}),
   getPlaybackContext: () => respond(() => cinemaPlayback ? { ...cinemaPlayback, Queue:cinemaPlayback.Queue.map(entry => ({...entry})) } : null),
   getTrailerDetails: expected => respond(() => {
     const model = trailerActions(expected);
@@ -690,7 +700,9 @@ const api: MediaApi = {
     if (item.Type !== 'Movie' || scenario === 'empty') throw new Error('No trailer is available for this film.');
     showPlayer({ ...item, Type:'Trailer', Name:`${item.Name} · Official trailer`, UserData:{} },0);
   },
-  image: (item, kind) => kind === 'logo' ? null : artwork.get(item.Id) || artwork.get(item.SeriesId || '') || artwork.get(item.ChannelId || '') || null,
+  image: (item, kind) => kind === 'logo' ? null
+    : kind === 'poster' && moviePosters[item.Id] ? `${assetBase}posters/${moviePosters[item.Id]}.svg`
+    : artwork.get(item.Id) || artwork.get(item.SeriesId || '') || artwork.get(item.ChannelId || '') || null,
 };
 
 const nativePage = document.querySelector<HTMLElement>('.demo-native-page')!;
@@ -745,12 +757,27 @@ for (const [layout, name] of [['desktop', 'Desktop preview'], ['tv', 'TV preview
 }
 settingsPreview.append(el('p', '', 'Collection rows are configured in the desktop layout. Switch to TV to try the same saved choices.'), settingsLayouts);
 const settingsShowcases = el('div', 'demo-settings-options'); settingsShowcases.setAttribute('aria-label', 'Home examples');
-for (const [showcase, name] of [['latest', 'Latest features Home'], ['halloween', 'Halloween Home'], ['christmas', 'Christmas Home']]) {
+for (const [showcase, name] of [['latest', 'Latest features Home'], ['halloween', 'Halloween Home'], ['christmas', 'Christmas Home'], ['advent', 'Dated Christmas Advent']]) {
   const url = new URL(location.href); url.searchParams.set('showcase', showcase); url.searchParams.set('featured', '0'); url.hash = '/home';
   const link = el('a', 'demo-settings-option', name); link.href = url.href; settingsShowcases.append(link);
 }
 settingsPreview.append(el('h3', '', 'Home examples'), el('p', '', 'Explore themed backgrounds, frames and opening doors with sample Home rows.'), settingsShowcases);
 nativeSettings.append(settingsHeader, settingsContent, settingsPreview); document.body.insertBefore(nativeSettings, nativePage);
+const adventCalendar = showcase === 'advent' ? el('aside', 'demo-advent-calendar hide') : null;
+if (adventCalendar) {
+  adventCalendar.setAttribute('aria-label', 'Advent demo calendar');
+  const label = el('label', '', 'Preview date');
+  const day = el('select'); day.setAttribute('aria-label', 'Advent preview date');
+  for (let value = 1; value <= 24; value++) {
+    const option = el('option', '', `${value} December`); option.value = String(value); day.append(option);
+  }
+  day.value = String(demoAdventDate(location.search).getDate());
+  day.addEventListener('change', () => {
+    const url = new URL(location.href); url.searchParams.set('adventDay', day.value); location.href = url.href;
+  });
+  label.append(day); adventCalendar.append(label, el('span', '', 'Five sample films · one door unlocks each day'));
+  document.body.append(adventCalendar);
+}
 function selectNativeHomeTab(index:number,notify=false):void{
   const previousIndex=homeTab.classList.contains('is-active')?0:1;
   homeTab.classList.toggle('hide',index!==0);homeTab.classList.toggle('is-active',index===0);
@@ -859,6 +886,7 @@ function syncRoute() {
   const music = /^#\/music(?:\?|$)/.test(location.hash);
   const playlists = /^#\/playlists(?:\?|$)/.test(location.hash) || /^#\/list(?:\?|$)/.test(location.hash) && params.get('parentId')==='library-playlists';
   const home = /^#\/home(?:\?|$)/.test(location.hash);
+  adventCalendar?.classList.toggle('hide', !home || params.has('cinemaProvider'));
   const preferences = /^#\/mypreferencesmenu(?:\?|$)/.test(location.hash);
   document.querySelector('.demo-switcher')?.classList.toggle('hide', params.has('cinemaProvider') || params.has('cinemaProviders') || params.has('cinemaCollections') || params.has('cinemaLoading'));
   nativeSettings.classList.toggle('hide', !preferences);

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600" role="img" aria-label="Where the Wild Things Wait poster">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#31493a"/><stop offset="1" stop-color="#13251e"/></linearGradient>
+    <linearGradient id="shade" x2="0" y2="1"><stop offset="0" stop-color="#13251e" stop-opacity="0"/><stop offset=".55" stop-color="#13251e" stop-opacity=".94"/><stop offset="1" stop-color="#13251e"/></linearGradient>
+    <pattern id="grain" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 1h2m1 3h2" stroke="#fff" stroke-opacity=".025"/></pattern>
+  </defs>
+  <path d="M0 0h400v600H0Z" fill="url(#sky)"/>
+  <circle cx="195" cy="212" r="94" fill="#cecc88" opacity=".7"/><path d="M0 362q90-116 204-15t196-6v259H0Z" fill="#73845a"/><path d="M0 403q108-87 211 8t189-35v224H0Z" fill="#3f674d"/><path d="M0 477q90-61 209-14t191-11v148H0Z" fill="#1f3d2e"/><g fill="#16372b"><path d="M25 111h15v489H25Zm335 15h17v474h-17Z"/><path d="M32 104-34 277h132Zm0 96L-46 379h157Zm337-95-66 177h132Zm0 103-87 199h174Z"/></g><path d="M202 312q18-26 38-10-19-3-27 17l-7-3q-14-10-29-4 9-13 25 0Z" fill="#172d28"/><path d="M228 339q12-16 24-6-12-2-18 10l-5-1q-7-7-17-3 5-7 16 0Z" fill="#172d28"/><path d="m126 431 4-22 4 22m-4-21 10 8m-10 9-8 14m9-14 5 15" fill="none" stroke="#ead3a0" stroke-width="3"/>
+  <path d="M0 387h400v213H0Z" fill="url(#shade)"/>
+  <path d="M0 0h400v600H0Z" fill="url(#grain)"/>
+  <path d="M19 20h362v560H19Z" fill="none" stroke="#e1d9a8" stroke-opacity=".25"/>
+  <text x="200" y="58" fill="#e1d9a8" font-family="Arial,sans-serif" font-size="9" letter-spacing="1.5" text-anchor="middle">GET LOST. FIND SOMETHING WONDERFUL.</text>
+  <text fill="#e1d9a8" font-family="Georgia,serif" font-size="34" letter-spacing="2" text-anchor="middle"><tspan x="200" y="454">WHERE THE</tspan><tspan x="200" y="493">WILD THINGS</tspan><tspan x="200" y="532">WAIT</tspan></text>
+  <path d="M159 552h82" stroke="#e1d9a8" stroke-opacity=".5"/>
+  <text x="200" y="572" fill="#e1d9a8" font-family="Arial,sans-serif" font-size="10" letter-spacing="3" text-anchor="middle">2025</text>
+</svg>

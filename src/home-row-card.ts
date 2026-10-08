@@ -24,6 +24,6 @@ export function homeRowCard(api: MediaApi, item: Item, rank?: number, onSelect?:
   const cover = el('div', 'tvl-home-row-cover');
   cover.append(picture(api.image(item, 'poster'), 'tvl-home-row-art'), el('span', 'tvl-home-row-caption', item.Name));
   card.append(cover);
-  if (row) decorateSeasonalCard(card, row, index);
+  if (row) decorateSeasonalCard(card, row, index, api.getSeasonalDate ? () => api.getSeasonalDate?.() : undefined);
   return card;
 }

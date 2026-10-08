@@ -17,7 +17,7 @@ const settingsFor = (row: HomeCollectionRow) => ({ version: 1, rows: [{
   id: 'seasonal', kind: 'seasonal', title: '', collectionIds: [], ranked: false, placement: 'start', itemSort: 'collection', itemOrder: [], children: [row],
 }] });
 
-async function homeFixture(page: Page, row = adventRow(), date = '2026-12-01T12:00:00Z', layout = 'tv') {
+async function homeFixture(page: Page, row = adventRow(), date = '2026-12-01T12:00:00Z', layout = 'tv', seasonalDate?: string) {
   const settings = settingsFor(row);
   await page.clock.install({ time: new Date(date) });
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -28,6 +28,7 @@ async function homeFixture(page: Page, row = adventRow(), date = '2026-12-01T12:
     const response = await route.fetch();
     await route.fulfill({ response, body: `${await response.text()}\n(()=>{
       const api=window.TvItemLayoutDemo.api,members=api.getCollectionItems,item=api.getItem;
+      ${seasonalDate ? `api.getSeasonalDate=()=>new Date(${JSON.stringify(seasonalDate)});` : ''}
       api.homeCollections={isCurrent:()=>true,load:async()=>({Revision:'advent-test',Settings:${JSON.stringify(settings)}}),save:async()=>{throw new Error('Unexpected write')}};
       api.getCollectionItems=async id=>{const found=await members(id);return id==='collection-coast'?Array.from({length:25},(_,i)=>({...found[i%found.length],Id:'advent-film-'+i,Name:'December film '+(i+1)})):found;};
       api.getItem=async id=>id.startsWith('advent-film-')?{...await item('movie-tide'),Id:id,Name:'December film '+(Number(id.slice(12))+1)}:item(id);
@@ -71,6 +72,25 @@ test('daily advent doors conceal future films and block activation while allowin
   await expect(first).toHaveAccessibleName(/December film 1/);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'December film 1 details', exact: true })).toBeVisible();
+});
+
+test('a seasonal preview date controls visibility and daily doors without changing the clock', async ({ page }) => {
+  await homeFixture(page, adventRow(), '2026-07-01T12:00:00Z', 'desktop', '2026-12-03T12:00:00Z');
+  const cards = homeCards(page);
+  for (let index = 0; index < 3; index++) await expect(cards.nth(index)).toHaveAttribute('data-advent-locked', 'false');
+  await expect(cards.nth(3)).toHaveAttribute('data-advent-locked', 'true');
+  await expect(cards.nth(3)).toHaveAccessibleName(/^Advent door 4\. Opens (4 December|December 4)$/);
+  await cards.nth(2).focus();
+  await expect(cards.nth(2)).toHaveClass(/tvl-seasonal-item-open/);
+  await cards.nth(3).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/home$/);
+  await expect(cards.nth(3)).not.toHaveClass(/tvl-seasonal-item-open/);
+  expect(await page.evaluate(() => new Date().getMonth())).toBe(6);
+  await page.evaluate(() => { window.TvItemLayoutDemo!.api.getSeasonalDate = () => new Date('2026-12-04T12:00:00Z'); });
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'December film 4 details', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => new Date().getMonth())).toBe(6);
 });
 
 test('daily advent keeps films at their saved door positions across reload even when shuffle is saved', async ({ page }) => {

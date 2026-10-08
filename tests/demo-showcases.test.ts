@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { demoShowcaseSettings, demoUserForShowcase, readDemoShowcase, seedDemoShowcase } from '../demo/showcases.ts';
+import { demoAdventDate, demoShowcaseSettings, demoUserForShowcase, readDemoShowcase, seedDemoShowcase } from '../demo/showcases.ts';
 import { activeHomeRows, homeCollectionKey, parseHomeCollections } from '../src/home-collection-settings.ts';
 
 test('showcases are opt-in and have separate preferences from the normal demo and each other', () => {
@@ -14,7 +14,7 @@ test('showcases are opt-in and have separate preferences from the normal demo an
   store.set(normalKey, 'ordinary visitor settings');
   seedDemoShowcase(storage, server, undefined);
   assert.equal(store.size, 1);
-  for (const showcase of ['latest', 'halloween', 'christmas'] as const) {
+  for (const showcase of ['latest', 'halloween', 'christmas', 'advent'] as const) {
     assert.equal(readDemoShowcase(`?layout=tv&showcase=${showcase}`), showcase);
     seedDemoShowcase(storage, server, showcase);
     const key = homeCollectionKey(server, demoUserForShowcase(showcase));
@@ -23,13 +23,13 @@ test('showcases are opt-in and have separate preferences from the normal demo an
     seedDemoShowcase(storage, server, showcase);
     assert.equal(store.get(key), empty, 'a saved empty configuration must not be reseeded');
   }
-  assert.equal(store.size, 4);
+  assert.equal(store.size, 5);
   assert.equal(store.get(normalKey), 'ordinary visitor settings');
 });
 
 test('latest follows annual dates while theme previews stay available all year using validated production settings', () => {
   const latest = demoShowcaseSettings('latest');
-  for (const showcase of ['latest', 'halloween', 'christmas'] as const) {
+  for (const showcase of ['latest', 'halloween', 'christmas', 'advent'] as const) {
     const settings = demoShowcaseSettings(showcase);
     assert.deepEqual(parseHomeCollections(settings), settings);
     assert.equal(settings.rows[0].title, 'Trending Movies');
@@ -47,4 +47,16 @@ test('latest follows annual dates while theme previews stay available all year u
     assert.deepEqual(activeHomeRows(demoShowcaseSettings(theme), new Date(2026, month, 15)).map(row => row.id), ['showcase-trending', `showcase-${theme}`]);
   }
   assert.equal(demoShowcaseSettings('christmas').rows[1].children![0].appearance?.adventUnlock, 'focus');
+});
+
+test('dated Advent uses December dates and a bounded independent preview calendar', () => {
+  const today = new Date(2026, 6, 15, 12);
+  const row = demoShowcaseSettings('advent').rows[1].children![0];
+  assert.deepEqual(row.season, { start: '12-01', end: '12-24' });
+  assert.equal(row.appearance?.adventUnlock, 'daily');
+  assert.equal(demoAdventDate('', today).getDate(), 3);
+  assert.equal(demoAdventDate('?adventDay=24', today).getDate(), 24);
+  for (const day of ['0', '25', '-1', '1.5', 'bad']) assert.equal(demoAdventDate(`?adventDay=${day}`, today).getDate(), 3);
+  assert.equal(demoAdventDate('', today).getMonth(), 11);
+  assert.equal(today.getMonth(), 6);
 });
